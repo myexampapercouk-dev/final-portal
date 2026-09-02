@@ -1,0 +1,218 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --navy: #16243D;
+  --navy-soft: #233754;
+  --gold: #C9A227;
+  --gold-soft: #E8D9A8;
+  --cream: #FAF6EE;
+  --canvas: #EEEAE0;
+  --paper: #FFFFFF;
+  --ink: #1D2433;
+  --meta: #66707F;
+  --line: #E6E1D5;
+  --green: #2E7D5B;
+  --green-wash: #EAF4EF;
+  --red: #B4433A;
+  --red-wash: #F9EDEC;
+  --radius: 14px;
+  --shadow: 0 2px 12px rgba(22, 36, 61, .08);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Poppins', -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+h1, h2, h3 {
+  font-family: 'Lora', serif;
+  color: var(--navy);
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+p { margin: 0 0 8px; }
+
+input, select, textarea {
+  padding: 10px 13px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  color: var(--navy);
+  background: #fff;
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+label {
+  display: block;
+  font-size: 11.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  margin-top: 12px;
+  color: var(--meta);
+  font-weight: 600;
+}
+
+/* Buttons: navy is the default/secondary-action look, .gold is the single
+   primary call-to-action per screen, .secondary is a ghost outline,
+   .danger stays for destructive actions (cancel etc). */
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--navy);
+  color: #fff;
+  transition: opacity .15s ease, transform .05s ease;
+}
+button:hover { opacity: .9; }
+button:active { transform: translateY(1px); }
+
+button.gold {
+  background: var(--gold);
+  color: var(--navy);
+  font-weight: 600;
+}
+button.secondary {
+  background: #fff;
+  color: var(--navy);
+  border: 1.5px solid var(--line);
+}
+button.danger {
+  background: var(--red-wash);
+  color: var(--red);
+}
+button.danger:hover { opacity: .85; }
+button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+/* Page shell: navy topbar (via Nav.js) sits above a cream canvas; each
+   page's content area reads as a floating white "portal" card. */
+.container {
+  max-width: 1020px;
+  margin: 24px auto 60px;
+  padding: 0;
+  background: var(--paper);
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(22, 36, 61, .14);
+  overflow: hidden;
+}
+.container > *:not(table):not(.tabs) {
+  padding-left: 28px;
+  padding-right: 28px;
+}
+.container > h2:first-child {
+  padding-top: 24px;
+  font-size: 24px;
+}
+.container > *:last-child { margin-bottom: 0; padding-bottom: 28px; }
+
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  padding-left: 28px;
+  padding-right: 28px;
+}
+.tab {
+  padding: 13px 16px;
+  cursor: pointer;
+  border-bottom: 2.5px solid transparent;
+  color: var(--meta);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.tab.active {
+  border-color: var(--gold);
+  color: var(--navy);
+  font-weight: 600;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th {
+  background: var(--navy);
+  color: #fff;
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+td {
+  text-align: left;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+}
+tr:nth-child(even) td { background: #FBF9F3; }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 36, 61, .55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 14px;
+  overflow: auto;
+  z-index: 200;
+}
+.modal {
+  background: #fff;
+  padding: 26px;
+  border-radius: 16px;
+  width: 420px;
+  max-width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+}
+
+.auth-box { max-width: 380px; margin: 60px auto; }
+
+.error {
+  color: var(--red);
+  font-size: 13px;
+  margin-top: 6px;
+  background: var(--red-wash);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+/* status pill (badge) */
+.badge {
+  display: inline-block;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: #E8ECF3;
+  color: var(--navy);
+  white-space: nowrap;
+}

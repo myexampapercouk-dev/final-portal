@@ -1,0 +1,57 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import PrivateRoute from './components/PrivateRoute';
+import Landing from './Landing';
+import UnifiedLogin from './UnifiedLogin';
+
+// Parent portal
+import ParentRegister from './portals/parent/ParentRegister';
+import ParentDashboard from './portals/parent/ParentDashboard';
+import ChildDetail from './portals/parent/ChildDetail';
+import ParentInvoices from './portals/parent/ParentInvoices';
+
+// Teacher portal
+import TeacherDashboard from './portals/teacher/TeacherDashboard';
+import ClassDetail from './portals/teacher/ClassDetail';
+import TeacherOneOnOne from './portals/teacher/TeacherOneOnOne';
+
+// Admin portal
+import AdminDashboard from './portals/admin/AdminDashboard';
+import Tutors from './portals/admin/Tutors';
+import CoursesAndClasses from './portals/admin/CoursesAndClasses';
+import Parents from './portals/admin/Parents';
+import AdminInvoices from './portals/admin/AdminInvoices';
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+
+          {/* Single, portal-neutral entry points */}
+          <Route path="/login" element={<UnifiedLogin />} />
+          <Route path="/register" element={<ParentRegister />} />
+
+          {/* Parent */}
+          <Route path="/parent" element={<PrivateRoute role="parent"><ParentDashboard /></PrivateRoute>} />
+          <Route path="/parent/child/:id" element={<PrivateRoute role="parent"><ChildDetail /></PrivateRoute>} />
+          <Route path="/parent/invoices" element={<PrivateRoute role="parent"><ParentInvoices /></PrivateRoute>} />
+
+          {/* Teacher */}
+          <Route path="/teacher" element={<PrivateRoute role="teacher"><TeacherDashboard /></PrivateRoute>} />
+          <Route path="/teacher/class/:id" element={<PrivateRoute role="teacher"><ClassDetail /></PrivateRoute>} />
+          <Route path="/teacher/one-on-one" element={<PrivateRoute role="teacher"><TeacherOneOnOne /></PrivateRoute>} />
+
+          {/* Admin */}
+          <Route path="/admin" element={<PrivateRoute role="admin"><AdminDashboard /></PrivateRoute>} />
+          <Route path="/admin/tutors" element={<PrivateRoute role="admin"><Tutors /></PrivateRoute>} />
+          <Route path="/admin/courses" element={<PrivateRoute role="admin"><CoursesAndClasses /></PrivateRoute>} />
+          <Route path="/admin/parents" element={<PrivateRoute role="admin"><Parents /></PrivateRoute>} />
+          <Route path="/admin/invoices" element={<PrivateRoute role="admin"><AdminInvoices /></PrivateRoute>} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
