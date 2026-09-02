@@ -109,11 +109,15 @@ router.post('/parent/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('[LOGIN ATTEMPT]', email);
+
     const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    console.log('[LOGIN] users found for that email:', rows.length);
     if (!rows.length) return res.status(401).json({ error: 'Invalid credentials' });
 
     const user = rows[0];
     const ok = await bcrypt.compare(password, user.password_hash);
+    console.log('[LOGIN] password match:', ok);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
     if (user.role === 'parent') {
@@ -136,6 +140,7 @@ router.post('/login', async (req, res) => {
     const safeUser = { id: user.id, role: user.role, name: user.name, email: user.email };
     res.json({ token: signToken(safeUser), user: safeUser });
   } catch (err) {
+    console.error('[LOGIN ERROR]', err.code || '', err.message);
     res.status(500).json({ error: 'Login failed', details: err.message });
   }
 });
