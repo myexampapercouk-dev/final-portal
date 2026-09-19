@@ -7,13 +7,13 @@ const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 // TEACHER: schedule a 1:1 class for a specific child
 router.post('/', requireAuth, requireRole('teacher'), async (req, res) => {
-  const { child_id, topic, timing, notes } = req.body;
+  const { child_id, topic, timing, end_timing, notes } = req.body;
   if (!child_id || !timing) return res.status(400).json({ error: 'child_id and timing are required' });
 
   const [result] = await pool.query(
-    `INSERT INTO one_on_one_classes (child_id, teacher_id, topic, timing, notes)
-     VALUES (?,?,?,?,?)`,
-    [child_id, req.user.id, topic || null, timing, notes || null]
+    `INSERT INTO one_on_one_classes (child_id, teacher_id, topic, timing, end_timing, notes)
+     VALUES (?,?,?,?,?,?)`,
+    [child_id, req.user.id, topic || null, timing, end_timing || null, notes || null]
   );
   const [row] = await pool.query('SELECT * FROM one_on_one_classes WHERE id = ?', [result.insertId]);
   res.status(201).json(row[0]);

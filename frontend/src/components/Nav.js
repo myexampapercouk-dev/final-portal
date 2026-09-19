@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-export default function Nav({ links = [] }) {
+export default function Nav({ links = [], brandSuffix = 'Portal' }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -13,7 +13,7 @@ export default function Nav({ links = [] }) {
   return (
     <nav style={styles.nav}>
       <div style={styles.brand}>
-        Edu Portal <em style={styles.brandAccent}>· Portal</em>
+        Edu Portal <em style={styles.brandAccent}>· {brandSuffix}</em>
       </div>
       <div style={styles.links}>
         {links.map((l) => (

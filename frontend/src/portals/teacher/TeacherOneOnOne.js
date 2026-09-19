@@ -55,7 +55,7 @@ export default function TeacherOneOnOne() {
 
   return (
     <div>
-      <Nav links={[{ to: '/teacher', label: 'My Classes' }, { to: '/teacher/one-on-one', label: '1:1 Sessions' }]} />
+      <Nav brandSuffix="Teacher" links={[{ to: '/teacher', label: 'My Classes' }, { to: '/teacher/one-on-one', label: '1:1 Sessions' }]} />
       <div className="container">
         <h2>Schedule a 1:1 Class</h2>
         <form onSubmit={schedule} className="card">
@@ -87,7 +87,7 @@ export default function TeacherOneOnOne() {
 
         <h2>My 1:1 Sessions</h2>
         {sessions.map((s) => (
-          <div key={s.id} className="card" style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <div key={s.id} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <div>
               <strong>{s.child_name}</strong> — {s.topic || 'Session'}
               <div style={{ fontSize: 12, color: '#64748b' }}>{new Date(s.timing).toLocaleString()} · {s.status}</div>

@@ -178,7 +178,7 @@ router.post('/class/:classId/attendance', requireAuth, requireRole('teacher'), a
 // TEACHER: add feedback for a present student
 // ---------------------------------------------------------------
 router.post('/:registrationId/feedback', requireAuth, requireRole('teacher'), async (req, res) => {
-  const { content } = req.body;
+  const { content, subject } = req.body;
   const [rows] = await pool.query(
     `SELECT cr.*, c.teacher_id FROM class_registrations cr
      JOIN classes c ON c.id = cr.class_id WHERE cr.id = ?`,
@@ -190,8 +190,8 @@ router.post('/:registrationId/feedback', requireAuth, requireRole('teacher'), as
   if (!reg.present) return res.status(400).json({ error: 'Can only give feedback to students marked present' });
 
   const [result] = await pool.query(
-    'INSERT INTO feedback (registration_id, teacher_id, content) VALUES (?,?,?)',
-    [req.params.registrationId, req.user.id, content]
+    'INSERT INTO feedback (registration_id, subject, teacher_id, content) VALUES (?,?,?,?)',
+    [req.params.registrationId, subject || null, req.user.id, content]
   );
   const [row] = await pool.query('SELECT * FROM feedback WHERE id = ?', [result.insertId]);
   res.status(201).json(row[0]);

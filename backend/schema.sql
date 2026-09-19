@@ -98,6 +98,7 @@ CREATE TABLE class_registrations (
 CREATE TABLE feedback (
   id INT AUTO_INCREMENT PRIMARY KEY,
   registration_id INT NOT NULL,
+  subject VARCHAR(40) NULL,
   teacher_id INT NOT NULL,
   content TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -114,6 +115,7 @@ CREATE TABLE one_on_one_classes (
   teacher_id INT NOT NULL,
   topic VARCHAR(200),
   timing DATETIME NOT NULL,
+  end_timing DATETIME NULL,
   status ENUM('upcoming','completed','cancelled') DEFAULT 'upcoming',
   notes TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
