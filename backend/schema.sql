@@ -160,6 +160,27 @@ CREATE TABLE invoice_items (
   FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
 );
 
+-- Uploaded material files for a class (up to 4, optional)
+CREATE TABLE class_materials (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  class_id INT NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  file_path VARCHAR(500) NOT NULL,
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
+);
+
+-- Email OTPs for parent signup/login verification
+CREATE TABLE email_otps (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(150) NOT NULL,
+  otp_code VARCHAR(10) NOT NULL,
+  purpose VARCHAR(50) NOT NULL DEFAULT 'parent_signup',
+  expires_at DATETIME NOT NULL,
+  consumed TINYINT(1) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- ------------------------------------------------------------
 -- Seed an initial admin so someone can log in and add teachers/courses.
 -- Password below is bcrypt hash for "Admin@123" -- change after first login.
