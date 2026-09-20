@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { FILE_BASE_URL } from '../../api/axios';
 import TeacherTopNav from './TeacherTopNav';
+import useIsMobile from '../../useIsMobile';
 import { T, btn } from './theme';
 
 const REGISTER_STEPS = ['Session', 'Group', 'Attendance'];
@@ -10,6 +11,7 @@ const SUBJECTS = ['Maths', 'English', 'Reasoning', 'Behaviour'];
 export default function ClassDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const isMobile = useIsMobile(720);
   const [cls, setCls] = useState(null);
   const [registrations, setRegistrations] = useState([]); // full class-category roster, incl. unregistered
   const [attendanceDraft, setAttendanceDraft] = useState({}); // keyed by child_id
@@ -121,10 +123,10 @@ export default function ClassDetail() {
         { label: 'Materials', active: tab === 'Materials', onClick: () => setTab('Materials') },
         { label: '1:1', active: tab === '1:1', onClick: () => setTab('1:1') }
       ]} />
-      <div style={styles.page}>
+      <div style={{ ...styles.page, padding: isMobile ? '20px 16px 48px' : styles.page.padding }}>
         {tab === 'Register' && (
           <>
-            <div style={styles.stepRow}>
+            <div style={{ ...styles.stepRow, margin: isMobile ? '-20px -16px 0' : styles.stepRow.margin, padding: isMobile ? '0 16px' : styles.stepRow.padding }}>
               {REGISTER_STEPS.map((s) => (
                 <div
                   key={s}
@@ -212,11 +214,11 @@ export default function ClassDetail() {
                     );
                   })}
                 </div>
-                <div style={styles.footerBar}>
+                <div style={footerBarStyle(isMobile)}>
                   <span style={{ fontSize: 13.5 }}>
                     <strong style={{ color: T.green }}>{presentCount} present</strong> · {absentCount} absent
                   </span>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {cls.status !== 'completed' && <button style={btn('secondary')} onClick={completeClass}>Complete Class</button>}
                     <button style={btn('gold')} onClick={saveAttendance}>Save register</button>
                   </div>
@@ -240,7 +242,7 @@ export default function ClassDetail() {
             )}
 
             {presentStudents.length > 0 && (
-              <div style={styles.feedbackGrid}>
+              <div style={{ ...styles.feedbackGrid, gridTemplateColumns: isMobile ? '1fr' : styles.feedbackGrid.gridTemplateColumns }}>
                 <div style={{ ...styles.card, margin: 0, padding: '14px 12px' }}>
                   <div style={{ ...styles.label, marginTop: 0, paddingLeft: 8 }}>Students</div>
                   {presentStudents.map((r) => {
@@ -327,7 +329,7 @@ export default function ClassDetail() {
             )}
 
             {presentStudents.length > 0 && (
-              <div style={styles.footerBar}>
+              <div style={footerBarStyle(isMobile)}>
                 <span style={{ fontSize: 13.5 }}>{studentsWithRemarks} of {presentStudents.length} students have remarks</span>
                 <button
                   style={btn('gold')}
@@ -347,10 +349,17 @@ export default function ClassDetail() {
             <div style={{ ...styles.card, margin: '16px 0 0', padding: 0, overflow: 'hidden' }}>
               {cls.materials && cls.materials.length > 0 ? (
                 cls.materials.map((m, i) => (
-                  <div key={m.id} style={{ ...styles.materialRow, borderTop: i === 0 ? 'none' : `1px solid ${T.line}` }}>
+                  <div
+                    key={m.id}
+                    style={{
+                      ...styles.materialRow,
+                      flexWrap: 'wrap',
+                      borderTop: i === 0 ? 'none' : `1px solid ${T.line}`
+                    }}
+                  >
                     <div style={styles.pdfIcon}>PDF</div>
-                    <div style={{ flex: 1 }}>
-                      <strong style={{ color: T.navy }}>{m.file_name}</strong>
+                    <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+                      <strong style={{ color: T.navy, wordBreak: 'break-word' }}>{m.file_name}</strong>
                       <div style={{ fontSize: 12, color: T.meta }}>View only · no download</div>
                     </div>
                     <a href={`${FILE_BASE_URL}${m.file_path}`} target="_blank" rel="noreferrer">
@@ -455,11 +464,6 @@ const styles = {
     width: 22, height: 22, borderRadius: 6, border: '1.5px solid', display: 'flex',
     alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, flexShrink: 0
   },
-  footerBar: {
-    position: 'sticky', bottom: 0, left: 0, right: 0, marginTop: 24, marginLeft: -40, marginRight: -40,
-    padding: '16px 40px', background: '#fff', borderTop: `1px solid ${T.line}`,
-    boxShadow: '0 -4px 16px rgba(22,36,61,.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-  },
   feedbackGrid: { display: 'grid', gridTemplateColumns: '280px 1fr', gap: 24, marginTop: 20, alignItems: 'flex-start' },
   studentRow: { padding: '12px 12px', borderRadius: 10, cursor: 'pointer', marginBottom: 6 },
   dot: { width: 8, height: 8, borderRadius: '50%', marginTop: 4, flexShrink: 0 },
@@ -471,3 +475,13 @@ const styles = {
     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0
   }
 };
+
+function footerBarStyle(isMobile) {
+  const gutter = isMobile ? 16 : 40;
+  return {
+    position: 'sticky', bottom: 0, left: 0, right: 0, marginTop: 24, marginLeft: -gutter, marginRight: -gutter,
+    padding: `14px ${gutter}px`, background: '#fff', borderTop: `1px solid ${T.line}`,
+    boxShadow: '0 -4px 16px rgba(22,36,61,.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    flexWrap: 'wrap', gap: 10
+  };
+}
