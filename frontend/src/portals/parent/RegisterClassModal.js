@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
+import { T, btnStyle, badgeStyle, modalBackdrop, modalCard } from '../../theme';
 
 export default function RegisterClassModal({ childId, onClose, onRegistered }) {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => { loadAvailable(); }, []);
+  useEffect(() => { loadAvailable(); /* eslint-disable-next-line */ }, []);
 
   async function loadAvailable() {
     setLoading(true);
@@ -27,32 +28,34 @@ export default function RegisterClassModal({ childId, onClose, onRegistered }) {
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ width: 520 }} onClick={(e) => e.stopPropagation()}>
-        <h3>Register for a Class</h3>
-        {loading && <p>Loading available classes...</p>}
-        {error && <div className="error">{error}</div>}
+    <div style={modalBackdrop} onClick={onClose}>
+      <div style={{ ...modalCard, maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ fontFamily: T.headlineFont, marginTop: 0 }}>Register for a Class</h3>
+        {loading && <p style={{ color: T.onSurfaceVariant }}>Loading available classes...</p>}
+        {error && <div style={{ color: T.error, fontSize: 12.5, background: T.errorContainer, padding: '7px 11px', borderRadius: 8, marginBottom: 8 }}>{error}</div>}
         {!loading && classes.length === 0 && (
-          <p style={{ color: '#64748b' }}>No new classes available for this child's category right now.</p>
+          <p style={{ color: T.onSurfaceVariant }}>No new classes available for this child's category right now.</p>
         )}
-        <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+        <div style={{ maxHeight: 340, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {classes.map((c) => (
-            <div key={c.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div key={c.id} style={{ background: T.surfaceContainerLow, borderRadius: 12, padding: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
               <div>
                 <strong>{c.title}</strong>
-                <div style={{ fontSize: 12, color: '#64748b' }}>
+                <div style={{ fontSize: 12, color: T.onSurfaceVariant }}>
                   {c.course_name} · {new Date(c.timing).toLocaleString()} · Teacher: {c.teacher_name}
                 </div>
-                <div style={{ marginTop: 4 }}>
-                  {c.categories.map((cat) => <span key={cat} className="badge" style={{ marginRight: 4 }}>{cat}</span>)}
-                  <span className="badge" style={{ background: '#f1f5f9', color: '#334155' }}>{c.registered_count} registered</span>
+                <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {c.categories.map((cat) => <span key={cat} style={badgeStyle(T.secondaryFixed, T.onSecondaryFixed)}>{cat}</span>)}
+                  <span style={badgeStyle(T.surfaceContainerHigh, T.onSurfaceVariant)}>{c.registered_count} registered</span>
                 </div>
               </div>
-              <button className="gold" onClick={() => register(c.id)}>Register</button>
+              <button style={btnStyle('primary')} onClick={() => register(c.id)}>Register</button>
             </div>
           ))}
         </div>
-        <button className="secondary" style={{ marginTop: 12 }} onClick={onClose}>Close</button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+          <button style={btnStyle('secondaryOutline')} onClick={onClose}>Close</button>
+        </div>
       </div>
     </div>
   );
