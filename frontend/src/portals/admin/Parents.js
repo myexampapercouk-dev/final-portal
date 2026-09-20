@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
-import Shell from '../../components/Shell';
-import { NAV } from './AdminDashboard';
-import { T, cardStyle, badgeStyle } from '../../theme';
+import AdminShell from './AdminShell';
+import { A, cardStyle, badge } from './theme';
 
 export default function Parents() {
   const [parents, setParents] = useState([]);
@@ -12,19 +11,19 @@ export default function Parents() {
   }, []);
 
   return (
-    <Shell active="parents" navItems={NAV} roleLabel="Admin">
-      <h1 style={{ fontFamily: T.headlineFont, fontSize: 24, fontWeight: 700, color: T.onSurface, margin: '0 0 16px' }}>Parents</h1>
+    <AdminShell>
+      <h1 style={{ fontFamily: A.headlineFont, fontSize: 26, color: A.navy, margin: '0 0 16px' }}>Parents</h1>
       {parents.map((p) => (
         <div key={p.id} style={cardStyle}>
-          <strong>{p.name}</strong> · {p.email} {p.phone && `· ${p.phone}`}
+          <strong style={{ color: A.navy }}>{p.name}</strong> <span style={{ color: A.meta }}>· {p.email} {p.phone && `· ${p.phone}`}</span>
           <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {p.children.length === 0 && <span style={{ fontSize: 13, color: T.onSurfaceVariant }}>No children added</span>}
+            {p.children.length === 0 && <span style={{ fontSize: 13, color: A.meta }}>No children added</span>}
             {p.children.map((c) => (
-              <span key={c.id} style={badgeStyle(T.secondaryFixed, T.onSecondaryFixed)}>{c.name} ({c.category})</span>
+              <span key={c.id} style={badge(A.goldSoft, '#7A5B00')}>{c.name} ({c.category})</span>
             ))}
           </div>
         </div>
       ))}
-    </Shell>
+    </AdminShell>
   );
 }
