@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useIsMobile from './useIsMobile';
 
 // Same navy/gold/cream system used across Parent, Teacher and Admin.
 const NAVY = 'var(--navy, #16243D)';
@@ -50,6 +51,8 @@ function scrollTo(id) {
 
 export default function Landing() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile(860);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [form, setForm] = useState({
     name: '', email: '', password: '',
     childName: '', childDob: '', category: '', targetExam: '', allergies: '',
@@ -87,19 +90,47 @@ export default function Landing() {
             <span style={{ fontSize: 10, letterSpacing: '.08em', color: C.secondary, textTransform: 'uppercase' }}>The School Specialist</span>
           </div>
         </div>
-        <nav style={styles.headerNav}>
-          <span onClick={() => scrollTo('parent-portal')} style={styles.navLink}>Parent Portal</span>
-          <span onClick={() => scrollTo('teacher-portal')} style={styles.navLink}>Teacher Portal</span>
-          <span onClick={() => scrollTo('admin-portal')} style={styles.navLink}>Admin Portal</span>
-          <span onClick={() => scrollTo('system-overview')} style={styles.navLink}>System Overview</span>
-        </nav>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => scrollTo('parent-signup')} style={styles.btnGhost}>Parent Self-Registration</button>
-          <button onClick={() => navigate('/login')} style={styles.btnPrimary}>
+
+        {!isMobile && (
+          <>
+            <nav style={styles.headerNav}>
+              <span onClick={() => scrollTo('parent-portal')} style={styles.navLink}>Parent Portal</span>
+              <span onClick={() => scrollTo('teacher-portal')} style={styles.navLink}>Teacher Portal</span>
+              <span onClick={() => scrollTo('admin-portal')} style={styles.navLink}>Admin Portal</span>
+              <span onClick={() => scrollTo('system-overview')} style={styles.navLink}>System Overview</span>
+            </nav>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => scrollTo('parent-signup')} style={styles.btnGhost}>Parent Self-Registration</button>
+              <button onClick={() => navigate('/login')} style={styles.btnPrimary}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>lock</span> Portal Login
+              </button>
+            </div>
+          </>
+        )}
+
+        {isMobile && (
+          <button onClick={() => setMenuOpen((o) => !o)} style={styles.hamburgerBtn} aria-label="Open menu">
+            <span style={styles.hamburgerBar} />
+            <span style={styles.hamburgerBar} />
+            <span style={styles.hamburgerBar} />
+          </button>
+        )}
+      </header>
+
+      {isMobile && menuOpen && (
+        <div style={styles.mobileMenu}>
+          <span onClick={() => { scrollTo('parent-portal'); setMenuOpen(false); }} style={styles.mobileNavLink}>Parent Portal</span>
+          <span onClick={() => { scrollTo('teacher-portal'); setMenuOpen(false); }} style={styles.mobileNavLink}>Teacher Portal</span>
+          <span onClick={() => { scrollTo('admin-portal'); setMenuOpen(false); }} style={styles.mobileNavLink}>Admin Portal</span>
+          <span onClick={() => { scrollTo('system-overview'); setMenuOpen(false); }} style={styles.mobileNavLink}>System Overview</span>
+          <button onClick={() => { scrollTo('parent-signup'); setMenuOpen(false); }} style={{ ...styles.btnGhost, width: '100%', justifyContent: 'center', marginTop: 10 }}>
+            Parent Self-Registration
+          </button>
+          <button onClick={() => navigate('/login')} style={{ ...styles.btnPrimary, width: '100%', justifyContent: 'center', marginTop: 8 }}>
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>lock</span> Portal Login
           </button>
         </div>
-      </header>
+      )}
 
       <main>
         {/* Notification banner */}
@@ -111,7 +142,7 @@ export default function Landing() {
 
         {/* Hero */}
         <section id="system-overview" style={{ ...styles.section, paddingTop: 56, paddingBottom: 64, borderBottom: `1px solid ${C.surfaceContainer}` }}>
-          <div style={styles.heroGrid}>
+          <div style={{ ...styles.heroGrid, gridTemplateColumns: isMobile ? '1fr' : styles.heroGrid.gridTemplateColumns }}>
             <div>
               <div style={styles.kicker}>
                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>account_tree</span>
@@ -497,11 +528,20 @@ function Field({ label, children }) {
 
 const styles = {
   header: {
-    position: 'sticky', top: 0, zIndex: 50, height: 76, background: 'rgba(255,255,255,.95)', backdropFilter: 'blur(8px)',
+    position: 'sticky', top: 0, zIndex: 50, minHeight: 76, background: 'rgba(255,255,255,.95)', backdropFilter: 'blur(8px)',
     borderBottom: `1px solid ${C.surfaceContainerHigh}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '0 32px', flexWrap: 'wrap', gap: 12
+    padding: '14px 20px', gap: 12, boxSizing: 'border-box'
   },
-  brand: { display: 'flex', alignItems: 'center', gap: 10 },
+  hamburgerBtn: {
+    background: 'none', border: 'none', cursor: 'pointer', padding: 8, display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0
+  },
+  hamburgerBar: { width: 22, height: 2, background: C.primary, borderRadius: 2 },
+  mobileMenu: {
+    position: 'sticky', top: 76, zIndex: 49, background: '#fff', borderBottom: `1px solid ${C.surfaceContainerHigh}`,
+    padding: '14px 20px 18px', display: 'flex', flexDirection: 'column', gap: 14
+  },
+  mobileNavLink: { fontSize: 15, fontWeight: 600, color: C.onSurface, cursor: 'pointer' },
+  brand: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
   brandMark: {
     width: 36, height: 36, borderRadius: 10, background: C.primaryContainer, color: '#fff',
     display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontFamily: C.headlineFont

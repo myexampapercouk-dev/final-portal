@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
+import useIsMobile from '../../useIsMobile';
 
 // Same navy/gold/cream system used across Parent, Teacher and Admin.
 const C = {
@@ -34,6 +35,7 @@ const CATEGORIES = [
 ];
 
 export default function ParentRegister() {
+  const isMobile = useIsMobile(900);
   const location = useLocation();
   const prefill = location.state || {};
   const [form, setForm] = useState({ name: prefill.name || '', email: prefill.email || '', phone: '', password: prefill.password || '', confirmPassword: '' });
@@ -101,7 +103,7 @@ export default function ParentRegister() {
         <Link to="/login" style={{ fontSize: 13, fontWeight: 600, color: C.navy, textDecoration: 'none' }}>Already registered? Sign In</Link>
       </header>
 
-      <main style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px 60px' }}>
+      <main style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '20px 16px 50px' : '28px 24px 60px' }}>
         <div style={styles.banner}>
           <span style={styles.kicker}>{'\u{1F6E1}'} Parent Gateway</span>
           <p style={{ fontSize: 12.5, color: C.meta, margin: '8px 0 0' }}>
@@ -122,7 +124,7 @@ export default function ParentRegister() {
           </div>
         </div>
 
-        <div style={styles.grid}>
+        <div style={{ ...styles.grid, gridTemplateColumns: isMobile ? '1fr' : styles.grid.gridTemplateColumns }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {step === 'details' && (
               <form onSubmit={sendOtp} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -312,8 +314,8 @@ function Step({ n, title, desc }) {
 
 const styles = {
   header: {
-    height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '0 24px', borderBottom: `1px solid ${C.line}`, background: C.paper
+    minHeight: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '12px 20px', borderBottom: `1px solid ${C.line}`, background: C.paper, gap: 12, flexWrap: 'wrap', boxSizing: 'border-box'
   },
   brand: { display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' },
   brandMark: {

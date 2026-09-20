@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import useIsMobile from './useIsMobile';
 
 // Same navy/gold/cream system used across Parent, Teacher and Admin.
 const C = {
@@ -71,6 +72,7 @@ const ROLE_CARDS = [
 ];
 
 export default function UnifiedLogin() {
+  const isMobile = useIsMobile(900);
   const [role, setRole] = useState('parent');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -144,7 +146,7 @@ export default function UnifiedLogin() {
         <Link to="/" style={{ fontSize: 13, fontWeight: 600, color: C.meta, textDecoration: 'none' }}>← Back to home</Link>
       </header>
 
-      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px 60px' }}>
+      <main style={{ maxWidth: 1200, margin: '0 auto', padding: isMobile ? '24px 16px 50px' : '32px 24px 60px' }}>
         <section style={styles.banner}>
           <div style={{ maxWidth: 640 }}>
             <span style={styles.kicker}>
@@ -160,7 +162,7 @@ export default function UnifiedLogin() {
           </div>
         </section>
 
-        <div style={styles.grid}>
+        <div style={{ ...styles.grid, gridTemplateColumns: isMobile ? '1fr' : styles.grid.gridTemplateColumns }}>
           {/* Left: role selector + protocols */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div>
@@ -306,8 +308,8 @@ export default function UnifiedLogin() {
 
 const styles = {
   header: {
-    height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '0 24px', borderBottom: `1px solid ${C.line}`, background: C.paper
+    minHeight: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '12px 20px', borderBottom: `1px solid ${C.line}`, background: C.paper, gap: 12, flexWrap: 'wrap', boxSizing: 'border-box'
   },
   brand: { display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' },
   brandMark: {
