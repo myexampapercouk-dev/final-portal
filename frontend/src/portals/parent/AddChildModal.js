@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import api from '../../api/axios';
-import { T, btnStyle, labelStyle, inputStyle, modalBackdrop, modalCard } from '../../theme';
+import { P, btn, inputStyle, labelStyle } from './theme';
 
 const CATEGORIES = ['7+', '8+', '9+', '10+', '11+', '13+'];
 
@@ -18,39 +18,46 @@ export default function AddChildModal({ onClose, onAdded }) {
     try {
       const { data } = await api.post('/children', form);
       onAdded(data);
-      onClose();
     } catch (err) {
       setError(err.response?.data?.error || 'Could not add child');
     }
   }
 
   return (
-    <div style={modalBackdrop} onClick={onClose}>
-      <div style={{ ...modalCard, maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-        <h3 style={{ fontFamily: T.headlineFont, marginTop: 0 }}>Add Child</h3>
+    <div style={styles.backdrop} onClick={onClose}>
+      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <h3 style={{ fontFamily: P.headlineFont, color: P.navy, marginTop: 0 }}>Add Child</h3>
         <form onSubmit={handleSubmit}>
           <label style={labelStyle}>Name</label>
           <input required value={form.name} onChange={(e) => update('name', e.target.value)} style={inputStyle} />
-          <label style={labelStyle}>Date of Birth</label>
+          <label style={{ ...labelStyle, marginTop: 12 }}>Date of Birth</label>
           <input required type="date" value={form.dob} onChange={(e) => update('dob', e.target.value)} style={inputStyle} />
-          <label style={labelStyle}>Target Exam</label>
+          <label style={{ ...labelStyle, marginTop: 12 }}>Target Exam (optional)</label>
           <input value={form.target_exam} onChange={(e) => update('target_exam', e.target.value)} style={inputStyle} />
-          <label style={labelStyle}>Allergies</label>
+          <label style={{ ...labelStyle, marginTop: 12 }}>Allergies (optional)</label>
           <input value={form.allergies} onChange={(e) => update('allergies', e.target.value)} style={inputStyle} />
-          <label style={labelStyle}>Category</label>
+          <label style={{ ...labelStyle, marginTop: 12 }}>Category</label>
           <select value={form.category} onChange={(e) => update('category', e.target.value)} style={inputStyle}>
             {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
-          <p style={{ fontSize: 12, color: T.onSurfaceVariant, marginTop: 8 }}>
+          <p style={{ fontSize: 12, color: P.meta, marginTop: 8 }}>
             Category determines which classes this child can see and register for.
           </p>
-          {error && <div style={{ color: T.error, fontSize: 12.5, background: T.errorContainer, padding: '7px 11px', borderRadius: 8, marginTop: 6 }}>{error}</div>}
+          {error && <div style={{ color: P.red, fontSize: 12.5, background: P.redWash, padding: '8px 12px', borderRadius: 8, marginTop: 8 }}>{error}</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
-            <button type="button" style={btnStyle('secondaryOutline')} onClick={onClose}>Cancel</button>
-            <button type="submit" style={btnStyle('primary')}>Save</button>
+            <button type="button" onClick={onClose} style={btn('secondary')}>Cancel</button>
+            <button type="submit" style={btn('gold')}>Save</button>
           </div>
         </form>
       </div>
     </div>
   );
 }
+
+const styles = {
+  backdrop: {
+    position: 'fixed', inset: 0, background: 'rgba(22,36,61,.55)', display: 'flex',
+    alignItems: 'flex-start', justifyContent: 'center', padding: '40px 14px', overflow: 'auto', zIndex: 200
+  },
+  modal: { background: '#fff', padding: 26, borderRadius: 16, width: 420, maxWidth: '100%', boxShadow: '0 20px 60px rgba(0,0,0,.3)' }
+};

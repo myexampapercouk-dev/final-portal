@@ -6,10 +6,16 @@ import Landing from './Landing';
 import UnifiedLogin from './UnifiedLogin';
 
 // Parent portal
+import { ParentProvider } from './portals/parent/ParentContext';
 import ParentRegister from './portals/parent/ParentRegister';
 import ParentDashboard from './portals/parent/ParentDashboard';
-import ChildDetail from './portals/parent/ChildDetail';
+import UpcomingClasses from './portals/parent/UpcomingClasses';
+import RegisterForClasses from './portals/parent/RegisterForClasses';
+import OneOnOneClasses from './portals/parent/OneOnOneClasses';
+import ClassesAttended from './portals/parent/ClassesAttended';
+import MockExams from './portals/parent/MockExams';
 import ParentInvoices from './portals/parent/ParentInvoices';
+import FamilySettings from './portals/parent/FamilySettings';
 
 // Teacher portal
 import TeacherDashboard from './portals/teacher/TeacherDashboard';
@@ -23,6 +29,14 @@ import CoursesAndClasses from './portals/admin/CoursesAndClasses';
 import Parents from './portals/admin/Parents';
 import AdminInvoices from './portals/admin/AdminInvoices';
 
+function ParentPage({ children }) {
+  return (
+    <PrivateRoute role="parent">
+      <ParentProvider>{children}</ParentProvider>
+    </PrivateRoute>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -35,9 +49,15 @@ export default function App() {
           <Route path="/register" element={<ParentRegister />} />
 
           {/* Parent */}
-          <Route path="/parent" element={<PrivateRoute role="parent"><ParentDashboard /></PrivateRoute>} />
-          <Route path="/parent/child/:id" element={<PrivateRoute role="parent"><ChildDetail /></PrivateRoute>} />
-          <Route path="/parent/invoices" element={<PrivateRoute role="parent"><ParentInvoices /></PrivateRoute>} />
+          <Route path="/parent" element={<ParentPage><ParentDashboard /></ParentPage>} />
+          <Route path="/parent/upcoming" element={<ParentPage><UpcomingClasses /></ParentPage>} />
+          <Route path="/parent/register" element={<ParentPage><RegisterForClasses /></ParentPage>} />
+          <Route path="/parent/one-on-one" element={<ParentPage><OneOnOneClasses /></ParentPage>} />
+          <Route path="/parent/attended" element={<ParentPage><ClassesAttended /></ParentPage>} />
+          <Route path="/parent/mock-exams" element={<ParentPage><MockExams /></ParentPage>} />
+          <Route path="/parent/mock-exams/:id" element={<ParentPage><MockExams /></ParentPage>} />
+          <Route path="/parent/invoices" element={<ParentPage><ParentInvoices /></ParentPage>} />
+          <Route path="/parent/settings" element={<ParentPage><FamilySettings /></ParentPage>} />
 
           {/* Teacher */}
           <Route path="/teacher" element={<PrivateRoute role="teacher"><TeacherDashboard /></PrivateRoute>} />
