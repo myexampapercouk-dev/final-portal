@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 
 export default function ParentRegister() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const location = useLocation();
+  const prefill = location.state || {};
+  const [form, setForm] = useState({ name: prefill.name || '', email: prefill.email || '', phone: '', password: prefill.password || '' });
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState('details'); // 'details' | 'verify'
   const [sending, setSending] = useState(false);
@@ -40,6 +42,12 @@ export default function ParentRegister() {
     setError('');
     try {
       await registerParent({ ...form, otp });
+      // If the landing page's intake form collected a first child (real
+      // fields only: name, dob, category, target_exam, allergies), create
+      // it now that we have an authenticated session.
+      if (prefill.child?.name && prefill.child?.dob && prefill.child?.category) {
+        try { await api.post('/children', prefill.child); } catch { /* non-fatal, parent can add it manually */ }
+      }
       navigate('/parent');
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
