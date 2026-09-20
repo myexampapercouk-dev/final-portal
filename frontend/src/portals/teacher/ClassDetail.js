@@ -1,28 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { FILE_BASE_URL } from '../../api/axios';
-import TeacherClassNav from './TeacherClassNav';
+import TeacherShell from './TeacherShell';
+import { T } from './theme';
 
-const REGISTER_STEPS = ['Session', 'Group', 'Attendance'];
-const SUBJECTS = ['Maths', 'English', 'Reasoning', 'Behaviour'];
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 export default function ClassDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [cls, setCls] = useState(null);
-  const [registrations, setRegistrations] = useState([]); // full class-category roster, incl. unregistered
+  const [registrations, setRegistrations] = useState([]);
   const [attendanceDraft, setAttendanceDraft] = useState({}); // keyed by child_id
-  const [tab, setTab] = useState('Register');
-  const [registerStep, setRegisterStep] = useState('Attendance');
-  const [search, setSearch] = useState('');
-  const [feedbackDraft, setFeedbackDraft] = useState({}); // keyed by `${registrationId}:${subject}`
+  const [tab, setTab] = useState('attendance');
+  const [feedbackDraft, setFeedbackDraft] = useState({}); // keyed by registration_id
   const [feedbackList, setFeedbackList] = useState([]);
-  const [activeStudent, setActiveStudent] = useState(null); // registration_id
-  const [activeSubject, setActiveSubject] = useState(SUBJECTS[0]);
-  const [oneOnOne, setOneOnOne] = useState({ child_id: '', date: '', start: '', end: '', notes: '' });
-  const [oneOnOneMsg, setOneOnOneMsg] = useState('');
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [schedule, setSchedule] = useState({ child_id: '', subject: '', duration: '60', date: '', start: '', notes: '' });
+  const [toast, setToast] = useState('');
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+
+  function showToast(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2800);
+  }
 
   async function load() {
     const [classesRes, regsRes, fbRes] = await Promise.all([
@@ -39,433 +42,497 @@ export default function ClassDetail() {
     setAttendanceDraft(draft);
   }
 
-  async function saveAttendance() {
+  async function persistAttendance(nextDraft) {
     const attendance = registrations.map((r) => ({
       child_id: r.child_id,
       registration_id: r.registration_id,
-      present: !!attendanceDraft[r.child_id]
+      present: !!nextDraft[r.child_id]
     }));
     await api.post(`/registrations/class/${id}/attendance`, { attendance });
     load();
   }
 
-  async function submitFeedback(registrationId, subject) {
-    const key = `${registrationId}:${subject}`;
-    const content = feedbackDraft[key];
+  function setAttendance(childId, present) {
+    const next = { ...attendanceDraft, [childId]: present };
+    setAttendanceDraft(next);
+    persistAttendance(next);
+    showToast(`Updated attendance to: ${present ? 'Present' : 'Absent'}`);
+  }
+
+  function markAllPresent() {
+    const next = {};
+    registrations.forEach((r) => { next[r.child_id] = true; });
+    setAttendanceDraft(next);
+    persistAttendance(next);
+    showToast(`All ${registrations.length} students marked as Present`);
+  }
+
+  async function submitFeedback(registrationId) {
+    const content = feedbackDraft[registrationId];
     if (!content) return;
-    await api.post(`/registrations/${registrationId}/feedback`, { content, subject });
-    setFeedbackDraft((d) => ({ ...d, [key]: '' }));
+    await api.post(`/registrations/${registrationId}/feedback`, { content });
+    setFeedbackDraft((d) => ({ ...d, [registrationId]: '' }));
     load();
+    showToast('Tutor observation synced to Parent Portal');
+  }
+
+  async function saveAllFeedback() {
+    const entries = Object.entries(feedbackDraft).filter(([, v]) => v);
+    for (const [regId, content] of entries) {
+      await api.post(`/registrations/${regId}/feedback`, { content });
+    }
+    setFeedbackDraft({});
+    load();
+    showToast(`${entries.length} feedback${entries.length === 1 ? '' : 's'} dispatched to parents!`);
   }
 
   async function completeClass() {
-    if (!window.confirm('Mark this class as complete? This will reflect across parent and admin portals.')) return;
     await api.post(`/registrations/class/${id}/complete`);
-    navigate('/teacher');
+    setCompleteOpen(false);
+    showToast('Class confirmed completed and published to parents.');
+    load();
   }
 
-  async function saveLesson(e) {
+  async function submitSchedule(e) {
     e.preventDefault();
-    setOneOnOneMsg('');
-    if (!oneOnOne.child_id || !oneOnOne.date || !oneOnOne.start) {
-      setOneOnOneMsg('Pick a child, date and start time.');
-      return;
-    }
+    if (!schedule.child_id || !schedule.date || !schedule.start) return;
+    const startDt = new Date(`${schedule.date}T${schedule.start}`);
+    const endDt = new Date(startDt.getTime() + Number(schedule.duration) * 60000);
+    const pad = (n) => String(n).padStart(2, '0');
+    const toLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     try {
       await api.post('/one-on-one', {
-        child_id: oneOnOne.child_id,
-        timing: `${oneOnOne.date}T${oneOnOne.start}`,
-        end_timing: oneOnOne.end ? `${oneOnOne.date}T${oneOnOne.end}` : null,
-        notes: oneOnOne.notes
+        child_id: schedule.child_id,
+        topic: schedule.subject,
+        timing: toLocal(startDt),
+        end_timing: toLocal(endDt),
+        notes: schedule.notes
       });
-      setOneOnOneMsg('Lesson saved — visible on the parent portal.');
-      setOneOnOne({ child_id: '', date: '', start: '', end: '', notes: '' });
+      const childName = registrations.find((r) => String(r.child_id) === String(schedule.child_id))?.child_name;
+      setScheduleOpen(false);
+      setSchedule({ child_id: '', subject: '', duration: '60', date: '', start: '', notes: '' });
+      showToast(`1:1 invitation sent to ${childName || 'the student'}'s guardian!`);
     } catch (err) {
-      setOneOnOneMsg(err.response?.data?.error || 'Could not save lesson');
+      showToast(err.response?.data?.error || 'Could not schedule the session');
     }
   }
 
-  if (!cls) return <div style={{ padding: 40 }}>Loading...</div>;
+  if (!cls) return <TeacherShell active="classes"><div style={{ padding: 24 }}>Loading...</div></TeacherShell>;
 
-  // Only children who are (a) checked present AND (b) actually have a registration
-  // (walk-ins get a registration_id once "Save Attendance" auto-registers them)
   const presentStudents = registrations.filter((r) => attendanceDraft[r.child_id] && r.registration_id);
-  const filteredRoster = registrations.filter((r) =>
-    r.child_name.toLowerCase().includes(search.toLowerCase())
-  );
   const presentCount = registrations.filter((r) => attendanceDraft[r.child_id]).length;
-  const absentCount = registrations.length - presentCount;
-  const categories = [...new Set(registrations.map((r) => r.category))];
+  const totalCount = registrations.length;
+  const attendanceRate = totalCount ? Math.round((presentCount / totalCount) * 100) : 0;
+  const msUntilClass = new Date(cls.timing).getTime() - Date.now();
+  const cancellationClosed = msUntilClass < TWENTY_FOUR_HOURS_MS;
+  const initials = (name) => name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
 
-  const activeReg = presentStudents.find((r) => r.registration_id === activeStudent) || presentStudents[0];
-  const activeIndex = presentStudents.findIndex((r) => r.registration_id === (activeReg && activeReg.registration_id));
-  const subjectsCompleted = (reg) =>
-    new Set(feedbackList.filter((f) => f.registration_id === reg?.registration_id).map((f) => f.subject)).size;
-  const studentsWithRemarks = presentStudents.filter((r) => subjectsCompleted(r) > 0).length;
-  const activeSubjectsDone = activeReg ? subjectsCompleted(activeReg) : 0;
+  const STATUS_STYLE = {
+    scheduled: { bg: T.secondaryFixed, fg: T.onSecondaryFixed, label: 'Scheduled' },
+    completed: { bg: T.tertiaryFixed, fg: T.onTertiaryFixed, label: 'Completed' },
+    cancelled: { bg: T.errorContainer, fg: T.onErrorContainer, label: 'Cancelled' }
+  };
+  const statusInfo = STATUS_STYLE[cls.status] || STATUS_STYLE.scheduled;
 
-  function durationLabel() {
-    if (!oneOnOne.start || !oneOnOne.end) return null;
-    const [sh, sm] = oneOnOne.start.split(':').map(Number);
-    const [eh, em] = oneOnOne.end.split(':').map(Number);
-    let mins = (eh * 60 + em) - (sh * 60 + sm);
-    if (mins <= 0) return null;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return `${h ? `${h} hr ${m ? `${m} min` : ''}` : `${m} min`}`.trim();
-  }
+  const TABS = [
+    { key: 'attendance', label: 'Students & Attendance', icon: 'group', badge: totalCount },
+    { key: 'feedback', label: 'Student Feedback', icon: 'rate_review', badge: presentCount },
+    { key: 'materials', label: 'Class Material', icon: 'menu_book', badge: (cls.materials || []).length }
+  ];
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--canvas, #EEEAE0)' }}>
-      <TeacherClassNav tab={tab} setTab={setTab} />
-      <div style={styles.page}>
-        {tab === 'Register' && (
-          <>
-            <div style={styles.stepRow}>
-              {REGISTER_STEPS.map((s) => (
-                <div
-                  key={s}
-                  onClick={() => setRegisterStep(s)}
+    <TeacherShell active="classes">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Breadcrumb + cancellation notice */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: T.onSurfaceVariant }}>
+            <span onClick={() => navigate('/teacher')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_back</span>
+              My Assigned Classes
+            </span>
+            <span>/</span>
+            <span style={{ color: T.onSurface, fontWeight: 600 }}>{cls.title}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.surfaceContainerHigh, padding: '7px 14px', borderRadius: 999, fontSize: 12.5, color: T.onSurfaceVariant }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 16, color: T.primary }}>lock_clock</span>
+            {cancellationClosed ? 'Free cancellation window for parents closed (within 24h window)' : 'Free cancellation window open (24h+ before class)'}
+          </div>
+        </div>
+
+        {/* Overview card */}
+        <div style={{ background: T.surfaceContainerLowest, borderRadius: T.radius.lg, boxShadow: T.shadow, padding: 24 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 56, height: 56, borderRadius: 14, background: T.primaryFixed, color: T.onPrimaryFixed, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 18, fontFamily: T.headlineFont }}>
+                {initials(cls.title)}
+              </div>
+              <div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                  <span style={{ background: statusInfo.bg, color: statusInfo.fg, fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>{statusInfo.label}</span>
+                  {(cls.categories || []).map((cat) => (
+                    <span key={cat} style={{ background: T.secondaryFixed, color: T.onSecondaryFixed, fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>{cat}</span>
+                  ))}
+                </div>
+                <h1 style={{ fontFamily: T.headlineFont, fontSize: 22, fontWeight: 700, color: T.onSurface, margin: 0 }}>{cls.title}</h1>
+                <p style={{ fontSize: 13, color: T.onSurfaceVariant, margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 15, color: T.secondary }}>verified_user</span>
+                  {cls.course_name}
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setScheduleOpen(true)} style={btnStyle('secondaryOutline')}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>calendar_add_on</span> Schedule 1:1 Class
+              </button>
+              {cls.status !== 'completed' && (
+                <button onClick={() => setCompleteOpen(true)} style={btnStyle('primary')}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>fact_check</span> Complete Class
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+            <Metric icon="schedule" bg={T.secondaryFixed} fg={T.onSecondaryFixed} label="Session Time" value={new Date(cls.timing).toLocaleString()} />
+            <Metric icon="menu_book" bg={T.primaryFixed} fg={T.onPrimaryFixed} label="Course" value={cls.course_name} />
+            <Metric icon="person" bg={T.tertiaryFixed} fg={T.onTertiaryFixed} label="Pupils Registered" value={`${totalCount} Enrolled`} />
+            <Metric icon="task_alt" bg={T.surfaceContainerHighest} fg={T.secondary} label="Attendance Rate" value={`${presentCount} / ${totalCount} Present (${attendanceRate}%)`} />
+          </div>
+        </div>
+
+        {/* Segmented tabs */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'inline-flex', padding: 6, borderRadius: 14, background: T.surfaceContainerHigh, gap: 4 }}>
+            {TABS.map((t) => {
+              const isActive = tab === t.key;
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
                   style={{
-                    ...styles.step,
-                    color: registerStep === s ? 'var(--navy)' : 'var(--meta)',
-                    fontWeight: registerStep === s ? 700 : 500,
-                    borderBottomColor: registerStep === s ? 'var(--gold)' : 'transparent'
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 10, border: 'none',
+                    cursor: 'pointer', fontSize: 13.5, fontWeight: 600,
+                    background: isActive ? T.surfaceContainerLowest : 'transparent',
+                    color: isActive ? T.onSurface : T.onSurfaceVariant,
+                    boxShadow: isActive ? T.shadow : 'none'
                   }}
                 >
-                  {s}
-                </div>
-              ))}
-            </div>
-
-            {registerStep === 'Session' && (
-              <div style={{ paddingTop: 28 }}>
-                <h2 style={{ fontSize: 26 }}>{cls.title}</h2>
-                <p style={{ color: 'var(--meta)' }}>{cls.course_name} · {new Date(cls.timing).toLocaleString()}</p>
-                <div style={{ marginTop: 8 }}>
-                  {categories.map((cat) => <span key={cat} className="badge" style={{ marginRight: 6 }}>{cat}</span>)}
-                  <span className="badge" style={{ background: '#e0f2fe', color: '#0369a1' }}>Status: {cls.status}</span>
-                </div>
-                <button className="gold" style={{ marginTop: 22 }} onClick={() => setRegisterStep('Group')}>
-                  Continue to Group
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{t.icon}</span>
+                  {t.label}
+                  <span style={{ background: T.secondaryFixed, color: T.onSecondaryFixed, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999 }}>{t.badge}</span>
                 </button>
-              </div>
-            )}
+              );
+            })}
+          </div>
+          {tab === 'attendance' && (
+            <button onClick={markAllPresent} style={btnStyle('ghost')}>
+              <span className="material-symbols-outlined" style={{ fontSize: 18, color: T.tertiary }}>done_all</span> Mark All Present
+            </button>
+          )}
+        </div>
 
-            {registerStep === 'Group' && (
-              <div style={{ paddingTop: 28 }}>
-                <h2 style={{ fontSize: 22 }}>Roster by category</h2>
-                <p style={{ color: 'var(--meta)', marginBottom: 16 }}>{registrations.length} children eligible for this session.</p>
-                {categories.map((cat) => (
-                  <div key={cat} style={{ marginBottom: 18 }}>
-                    <label style={{ marginTop: 0 }}>{cat}</label>
-                    <div style={styles.rosterGrid}>
-                      {registrations.filter((r) => r.category === cat).map((r) => (
-                        <div key={r.child_id} className="card" style={{ margin: 0, padding: '12px 14px' }}>
-                          <strong>{r.child_name}</strong>
-                          <div style={{ fontSize: 12, color: 'var(--meta)' }}>
-                            {r.registration_id ? r.status : 'Not registered'}
+        {/* PANE: Attendance */}
+        {tab === 'attendance' && (
+          <div style={{ background: T.surfaceContainerLowest, borderRadius: T.radius.lg, boxShadow: T.shadow, overflow: 'hidden' }}>
+            <div style={{ padding: 14, background: T.surfaceContainerLow, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: T.headlineFont, fontWeight: 700, fontSize: 15 }}>Live Class Register</span>
+              <span style={{ fontSize: 12.5, color: T.onSurfaceVariant }}>Changes are recorded instantly</span>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ background: T.surfaceContainer, color: T.onSurfaceVariant, textTransform: 'uppercase', fontSize: 11, letterSpacing: '.05em' }}>
+                  <th style={thStyle}>Student</th>
+                  <th style={thStyle}>Category</th>
+                  <th style={{ ...thStyle, textAlign: 'center' }}>Status</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Attendance Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {registrations.map((r) => {
+                  const present = !!attendanceDraft[r.child_id];
+                  return (
+                    <tr key={r.child_id} style={{ borderBottom: `1px solid ${T.surfaceContainerHigh}` }}>
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: T.surfaceContainerHigh, color: T.onSurface, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12 }}>
+                            {initials(r.child_name)}
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                <button className="gold" onClick={() => setRegisterStep('Attendance')}>Continue to Attendance</button>
-              </div>
-            )}
-
-            {registerStep === 'Attendance' && (
-              <div style={{ paddingTop: 24, paddingBottom: 90 }}>
-                <h2 style={{ fontSize: 22 }}>{new Date(cls.timing).toDateString()} — {cls.course_name}</h2>
-                <p style={{ color: 'var(--meta)', marginTop: -4 }}>Tap every child who is in the room</p>
-                <input
-                  placeholder="🔍 Search name..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ marginTop: 16, marginBottom: 14, maxWidth: 420 }}
-                />
-                <div style={styles.rosterGrid}>
-                  {filteredRoster.map((r) => {
-                    const present = !!attendanceDraft[r.child_id];
-                    return (
-                      <div
-                        key={r.child_id}
-                        onClick={() => setAttendanceDraft((d) => ({ ...d, [r.child_id]: !d[r.child_id] }))}
-                        style={{
-                          ...styles.rosterCard,
-                          background: present ? 'var(--green-wash)' : '#fff',
-                          borderColor: present ? 'var(--green)' : 'var(--line)'
-                        }}
-                      >
-                        <span style={{ ...styles.checkbox, background: present ? 'var(--green)' : '#fff', borderColor: present ? 'var(--green)' : 'var(--line)' }}>
-                          {present && '✓'}
-                        </span>
-                        <div>
-                          <strong>{r.child_name}</strong>
-                          <div style={{ fontSize: 12, color: 'var(--meta)' }}>{r.category}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={styles.footerBar}>
-                  <span style={{ fontSize: 13.5 }}>
-                    <strong style={{ color: 'var(--green)' }}>{presentCount} present</strong> · {absentCount} absent
-                  </span>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {cls.status !== 'completed' && <button className="secondary" onClick={completeClass}>Complete Class</button>}
-                    <button className="gold" onClick={saveAttendance}>Save register</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {tab === 'Feedback' && (
-          <div style={{ paddingTop: 24, paddingBottom: 90 }}>
-            <h2 style={{ fontSize: 24 }}>Feedback — {new Date(cls.timing).toDateString()}</h2>
-            <p style={{ color: 'var(--meta)', marginTop: -4 }}>
-              {presentStudents.length} students present · {studentsWithRemarks} with remarks
-            </p>
-
-            {presentStudents.length === 0 && (
-              <p style={{ color: '#64748b', marginTop: 16 }}>
-                Mark students present in Register first to give feedback.
-              </p>
-            )}
-
-            {presentStudents.length > 0 && (
-              <div style={styles.feedbackGrid}>
-                <div className="card" style={{ margin: 0, padding: '14px 12px' }}>
-                  <label style={{ marginTop: 0, paddingLeft: 8 }}>Students</label>
-                  {presentStudents.map((r) => {
-                    const done = subjectsCompleted(r);
-                    const isActive = activeReg && r.registration_id === activeReg.registration_id;
-                    return (
-                      <div
-                        key={r.registration_id}
-                        onClick={() => setActiveStudent(r.registration_id)}
-                        style={{
-                          ...styles.studentRow,
-                          background: isActive ? 'var(--navy)' : '#fff',
-                          color: isActive ? '#fff' : 'var(--navy)',
-                          borderLeft: isActive ? '4px solid var(--gold)' : '4px solid transparent'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
-                            <strong>{r.child_name}</strong>
-                            <div style={{ fontSize: 12, color: isActive ? '#C7CEDB' : 'var(--meta)' }}>{r.category}</div>
+                            <div style={{ fontWeight: 600 }}>{r.child_name}</div>
+                            <div style={{ fontSize: 11.5, color: T.onSurfaceVariant }}>
+                              {r.registration_id ? r.status : 'Not registered'}
+                            </div>
                           </div>
-                          <span style={{ ...styles.dot, background: done > 0 ? 'var(--gold)' : '#c7ccd6' }} />
                         </div>
-                        <div style={{ fontSize: 12, marginTop: 4, color: isActive ? 'var(--gold-soft)' : done > 0 ? 'var(--gold)' : '#94a3b8', fontWeight: 600 }}>
-                          {done > 0 ? `${done} subject${done > 1 ? 's' : ''} completed` : 'Not started'}
+                      </td>
+                      <td style={tdStyle}>{r.category}</td>
+                      <td style={{ ...tdStyle, textAlign: 'center' }}>
+                        <span style={{
+                          padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: present ? T.tertiaryFixed : T.errorContainer, color: present ? T.onTertiaryFixed : T.onErrorContainer
+                        }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: present ? T.tertiary : T.error }} />
+                          {present ? 'Present' : 'Absent'}
+                        </span>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', padding: 4, background: T.surfaceContainerHigh, borderRadius: 10, gap: 4 }}>
+                          <button onClick={() => setAttendance(r.child_id, true)} style={pillActionStyle(present)}>Present</button>
+                          <button onClick={() => setAttendance(r.child_id, false)} style={pillActionStyle(!present && r.registration_id, true)}>Absent</button>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {activeReg && (
-                  <div className="card" style={{ margin: 0 }}>
-                    <h3 style={{ marginBottom: 2 }}>{activeReg.child_name}</h3>
-                    <p style={{ color: 'var(--meta)', fontSize: 13 }}>{activeReg.category}</p>
-
-                    <label>Subject</label>
-                    <div style={styles.pillRow}>
-                      {SUBJECTS.map((s) => {
-                        const done = feedbackList.some((f) => f.registration_id === activeReg.registration_id && f.subject === s);
-                        const isActive = activeSubject === s;
-                        return (
-                          <div
-                            key={s}
-                            onClick={() => setActiveSubject(s)}
-                            style={{
-                              ...styles.subjectPill,
-                              background: isActive ? 'var(--navy)' : '#fff',
-                              color: isActive ? '#fff' : done ? 'var(--gold)' : 'var(--navy)',
-                              borderColor: isActive ? 'var(--navy)' : done ? 'var(--gold-soft)' : 'var(--line)'
-                            }}
-                          >
-                            {s} {done && '✓'}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {feedbackList
-                      .filter((f) => f.registration_id === activeReg.registration_id && f.subject === activeSubject)
-                      .map((f) => (
-                        <p key={f.id} style={{ fontSize: 13, color: '#334155', background: '#f1f5f9', padding: '8px 10px', borderRadius: 8, marginTop: 10 }}>
-                          {f.content}
-                        </p>
-                      ))}
-
-                    <label>Remarks</label>
-                    <textarea
-                      rows={5}
-                      placeholder={`Add a remark for ${activeSubject}...`}
-                      value={feedbackDraft[`${activeReg.registration_id}:${activeSubject}`] || ''}
-                      onChange={(e) => setFeedbackDraft((d) => ({ ...d, [`${activeReg.registration_id}:${activeSubject}`]: e.target.value }))}
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-                      <button className="secondary" onClick={() => submitFeedback(activeReg.registration_id, activeSubject)}>
-                        + Add another subject remark
-                      </button>
-                      <span style={{ fontSize: 12.5, color: 'var(--meta)' }}>{activeSubjectsDone} of {SUBJECTS.length} subjects have remarks</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {presentStudents.length > 0 && (
-              <div style={styles.footerBar}>
-                <span style={{ fontSize: 13.5 }}>{studentsWithRemarks} of {presentStudents.length} students have remarks</span>
-                <button
-                  className="gold"
-                  disabled={activeIndex >= presentStudents.length - 1}
-                  onClick={() => setActiveStudent(presentStudents[activeIndex + 1]?.registration_id)}
-                >
-                  Next
-                </button>
-              </div>
-            )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
 
-        {tab === 'Materials' && (
-          <div style={{ paddingTop: 24 }}>
-            <h2 style={{ fontSize: 24 }}>Today's material</h2>
-            <div className="card" style={{ margin: '16px 0 0', padding: 0, overflow: 'hidden' }}>
-              {cls.materials && cls.materials.length > 0 ? (
-                cls.materials.map((m, i) => (
-                  <div key={m.id} style={{ ...styles.materialRow, borderTop: i === 0 ? 'none' : '1px solid var(--line)' }}>
-                    <div style={styles.pdfIcon}>PDF</div>
-                    <div style={{ flex: 1 }}>
-                      <strong>{m.file_name}</strong>
-                      <div style={{ fontSize: 12, color: 'var(--meta)' }}>View only · no download</div>
+        {/* PANE: Feedback */}
+        {tab === 'feedback' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: T.surfaceContainerLow, borderRadius: T.radius.lg, padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span className="material-symbols-outlined" style={{ color: T.secondary }}>family_restroom</span>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>Live Parent Portal Synchronization</div>
+                  <div style={{ fontSize: 12, color: T.onSurfaceVariant }}>Showing only students marked Present ({presentCount}).</div>
+                </div>
+              </div>
+              <button onClick={saveAllFeedback} style={btnStyle('primary')}>
+                <span className="material-symbols-outlined" style={{ fontSize: 17 }}>cloud_sync</span> Save All Feedbacks
+              </button>
+            </div>
+
+            {presentStudents.length === 0 && <p style={{ color: T.onSurfaceVariant }}>Mark students present in the register first to give feedback.</p>}
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+              {presentStudents.map((r) => {
+                const existing = feedbackList.filter((f) => f.registration_id === r.registration_id);
+                return (
+                  <div key={r.registration_id} style={{ background: T.surfaceContainerLowest, borderRadius: T.radius.lg, boxShadow: T.shadow, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 12, background: T.primaryFixed, color: T.onPrimaryFixed, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                          {initials(r.child_name)}
+                        </div>
+                        <div>
+                          <div style={{ fontFamily: T.headlineFont, fontWeight: 700, fontSize: 15 }}>{r.child_name}</div>
+                          <div style={{ fontSize: 12, color: T.secondary }}>{r.category}</div>
+                        </div>
+                      </div>
+                      <span style={{ background: T.tertiaryFixed, color: T.onTertiaryFixed, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999 }}>Verified Present</span>
                     </div>
-                    <a href={`${FILE_BASE_URL}${m.file_path}`} target="_blank" rel="noreferrer">
-                      <button className="secondary" style={{ borderColor: 'var(--gold)', color: 'var(--navy)' }}>View</button>
-                    </a>
+
+                    {existing.map((f) => (
+                      <p key={f.id} style={{ fontSize: 12.5, color: T.onSurface, background: T.surfaceContainerLow, padding: '8px 10px', borderRadius: 8, margin: 0 }}>{f.content}</p>
+                    ))}
+
+                    <div>
+                      <label style={{ fontSize: 11, color: T.onSurfaceVariant, fontWeight: 600, display: 'block', marginBottom: 4 }}>Tutor's Observations</label>
+                      <textarea
+                        rows={3}
+                        placeholder="Provide actionable feedback for parents..."
+                        value={feedbackDraft[r.registration_id] || ''}
+                        onChange={(e) => setFeedbackDraft((d) => ({ ...d, [r.registration_id]: e.target.value }))}
+                        style={{ width: '100%', border: `1px solid ${T.surfaceContainerHigh}`, borderRadius: 8, padding: 8, fontSize: 13, resize: 'vertical', background: T.surfaceContainerLow }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button onClick={() => submitFeedback(r.registration_id)} style={btnStyle('secondary')}>Save &amp; Send to Parent</button>
+                    </div>
                   </div>
-                ))
-              ) : (
-                <p style={{ color: '#64748b', padding: 18 }}>No material uploaded by admin yet.</p>
-              )}
+                );
+              })}
             </div>
           </div>
         )}
 
-        {tab === '1:1' && (
-          <div style={{ paddingTop: 24, maxWidth: 640 }}>
-            <h2 style={{ fontSize: 24 }}>Log a 1:1 lesson</h2>
-            <form className="card" style={{ margin: '16px 0 0' }} onSubmit={saveLesson}>
-              <label>Child</label>
-              <select
-                value={oneOnOne.child_id}
-                onChange={(e) => setOneOnOne((f) => ({ ...f, child_id: e.target.value }))}
-              >
-                <option value="">Select a child...</option>
-                {registrations.map((r) => (
-                  <option key={r.child_id} value={r.child_id}>{r.child_name} — {r.category}</option>
-                ))}
-              </select>
-
-              <label>Date</label>
-              <input type="date" value={oneOnOne.date} onChange={(e) => setOneOnOne((f) => ({ ...f, date: e.target.value }))} />
-
-              <div style={{ display: 'flex', gap: 14, marginTop: 0 }}>
-                <div style={{ flex: 1 }}>
-                  <label>Start</label>
-                  <input type="time" value={oneOnOne.start} onChange={(e) => setOneOnOne((f) => ({ ...f, start: e.target.value }))} />
+        {/* PANE: Materials */}
+        {tab === 'materials' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+            {cls.materials && cls.materials.length > 0 ? cls.materials.map((m) => (
+              <div key={m.id} style={{ background: T.surfaceContainerLowest, borderRadius: T.radius.lg, boxShadow: T.shadow, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: T.primaryFixed, color: T.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 22 }}>picture_as_pdf</span>
+                  </div>
+                  <div>
+                    <h2 style={{ fontFamily: T.headlineFont, fontSize: 15, fontWeight: 700, margin: 0 }}>{m.file_name}</h2>
+                    <p style={{ fontSize: 12, color: T.onSurfaceVariant, margin: '2px 0 0' }}>View only · no download</p>
+                  </div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label>End</label>
-                  <input type="time" value={oneOnOne.end} onChange={(e) => setOneOnOne((f) => ({ ...f, end: e.target.value }))} />
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <a href={`${FILE_BASE_URL}${m.file_path}`} target="_blank" rel="noreferrer">
+                    <button style={btnStyle('secondary')}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 17 }}>visibility</span> View
+                    </button>
+                  </a>
                 </div>
               </div>
+            )) : (
+              <p style={{ color: T.onSurfaceVariant }}>No material uploaded by admin yet.</p>
+            )}
+          </div>
+        )}
+      </div>
 
-              {durationLabel() && (
-                <div style={{ background: 'var(--green-wash)', color: 'var(--green)', padding: '9px 13px', borderRadius: 10, fontSize: 13, marginTop: 12 }}>
-                  Duration: {durationLabel()} — calculated for you
+      {/* MODAL: Schedule 1:1 */}
+      {scheduleOpen && (
+        <div style={modalBackdrop}>
+          <div style={{ ...modalCard, maxWidth: 480 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontFamily: T.headlineFont, margin: 0, fontSize: 17 }}>Schedule 1:1 Booster Class</h3>
+              <button onClick={() => setScheduleOpen(false)} style={iconBtn}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: T.onSurfaceVariant, marginTop: 0 }}>
+              The student's parent portal will show this session once scheduled.
+            </p>
+            <form onSubmit={submitSchedule} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={modalLabel}>Select Student</label>
+                <select value={schedule.child_id} onChange={(e) => setSchedule((s) => ({ ...s, child_id: e.target.value }))} style={modalInput}>
+                  <option value="">Choose a student...</option>
+                  {registrations.map((r) => (
+                    <option key={r.child_id} value={r.child_id}>{r.child_name} ({r.category})</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={modalLabel}>Subject / Focus</label>
+                  <input value={schedule.subject} onChange={(e) => setSchedule((s) => ({ ...s, subject: e.target.value }))} style={modalInput} placeholder="e.g. Non-Verbal Reasoning" />
                 </div>
-              )}
-
-              <label>What was covered</label>
-              <textarea
-                rows={4}
-                placeholder="Summarise what the child worked on..."
-                value={oneOnOne.notes}
-                onChange={(e) => setOneOnOne((f) => ({ ...f, notes: e.target.value }))}
-              />
-
-              {oneOnOneMsg && <div className={oneOnOneMsg.startsWith('Lesson saved') ? 'badge' : 'error'} style={{ marginTop: 10 }}>{oneOnOneMsg}</div>}
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-                <span style={{ fontSize: 12.5, color: 'var(--meta)' }}>Saves to parent portal</span>
-                <button className="gold" type="submit">Save lesson</button>
+                <div style={{ width: 130 }}>
+                  <label style={modalLabel}>Duration</label>
+                  <select value={schedule.duration} onChange={(e) => setSchedule((s) => ({ ...s, duration: e.target.value }))} style={modalInput}>
+                    <option value="45">45 minutes</option>
+                    <option value="60">60 minutes</option>
+                    <option value="90">90 minutes</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={modalLabel}>Date</label>
+                  <input type="date" value={schedule.date} onChange={(e) => setSchedule((s) => ({ ...s, date: e.target.value }))} style={modalInput} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={modalLabel}>Start Time</label>
+                  <input type="time" value={schedule.start} onChange={(e) => setSchedule((s) => ({ ...s, start: e.target.value }))} style={modalInput} />
+                </div>
+              </div>
+              <div>
+                <label style={modalLabel}>Notes for Parent</label>
+                <textarea rows={3} value={schedule.notes} onChange={(e) => setSchedule((s) => ({ ...s, notes: e.target.value }))} style={{ ...modalInput, resize: 'vertical' }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
+                <button type="button" onClick={() => setScheduleOpen(false)} style={btnStyle('ghost')}>Cancel</button>
+                <button type="submit" style={btnStyle('primary')}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 17 }}>send</span> Send Invite to Parent
+                </button>
               </div>
             </form>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* MODAL: Complete Class */}
+      {completeOpen && (
+        <div style={modalBackdrop}>
+          <div style={{ ...modalCard, maxWidth: 420 }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: T.primaryFixed, color: T.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 24 }}>verified</span>
+            </div>
+            <h3 style={{ fontFamily: T.headlineFont, margin: 0, fontSize: 17 }}>Mark Class as Complete?</h3>
+            <p style={{ fontSize: 13.5, color: T.onSurfaceVariant }}>
+              This finalizes the register and reflects across the parent and admin portals.
+            </p>
+            <div style={{ background: T.surfaceContainerLow, borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                <span style={{ color: T.onSurfaceVariant }}>Attended:</span>
+                <span style={{ color: T.tertiary, fontWeight: 700 }}>{presentCount} Students</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                <span style={{ color: T.onSurfaceVariant }}>Absent:</span>
+                <span style={{ color: T.error, fontWeight: 700 }}>{totalCount - presentCount} Students</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button onClick={() => setCompleteOpen(false)} style={btnStyle('ghost')}>Return to Class</button>
+              <button onClick={completeClass} style={btnStyle('primary')}>
+                <span className="material-symbols-outlined" style={{ fontSize: 17 }}>check_circle</span> Confirm &amp; Publish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 60, background: '#283044', color: '#eef0ff',
+          padding: '12px 18px', borderRadius: 12, boxShadow: T.shadowMd, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5
+        }}>
+          <span className="material-symbols-outlined" style={{ color: T.tertiary, fontSize: 20 }}>check_circle</span>
+          {toast}
+        </div>
+      )}
+    </TeacherShell>
+  );
+}
+
+function Metric({ icon, bg, fg, label, value }) {
+  return (
+    <div style={{ background: T.surfaceContainerLow, padding: 10, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{icon}</span>
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 11, color: T.onSurfaceVariant }}>{label}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: T.onSurface, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
       </div>
     </div>
   );
 }
 
-const styles = {
-  page: { maxWidth: 1100, margin: '0 auto', padding: '28px 40px 60px' },
-  stepRow: {
-    display: 'flex', justifyContent: 'space-around', borderBottom: '1px solid var(--line)',
-    background: '#fff', margin: '-28px -40px 0', padding: '0 40px'
-  },
-  step: {
-    padding: '16px 10px', cursor: 'pointer', fontSize: 15, borderBottom: '2.5px solid transparent'
-  },
-  rosterGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))',
-    gap: 12
-  },
-  rosterCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    padding: '14px 16px',
-    border: '1.5px solid var(--line)',
-    borderRadius: 12,
-    cursor: 'pointer',
-    background: '#fff'
-  },
-  checkbox: {
-    width: 22, height: 22, borderRadius: 6, border: '1.5px solid var(--line)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    color: '#fff', fontSize: 13, flexShrink: 0
-  },
-  footerBar: {
-    position: 'sticky', bottom: 0, left: 0, right: 0,
-    marginTop: 24, marginLeft: -40, marginRight: -40, padding: '16px 40px',
-    background: '#fff', borderTop: '1px solid var(--line)', boxShadow: '0 -4px 16px rgba(22,36,61,.06)',
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-  },
-  feedbackGrid: { display: 'grid', gridTemplateColumns: '280px 1fr', gap: 24, marginTop: 20, alignItems: 'flex-start' },
-  studentRow: {
-    padding: '12px 12px', borderRadius: 10, cursor: 'pointer', marginBottom: 6
-  },
-  dot: { width: 8, height: 8, borderRadius: '50%', marginTop: 4, flexShrink: 0 },
-  pillRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 },
-  subjectPill: {
-    padding: '9px 16px', borderRadius: 999, border: '1.5px solid var(--line)',
-    cursor: 'pointer', fontSize: 13.5, fontWeight: 600
-  },
-  materialRow: { display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px' },
-  pdfIcon: {
-    width: 40, height: 40, borderRadius: 8, background: 'var(--navy)', color: 'var(--gold)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0
-  }
+function btnStyle(variant) {
+  const base = {
+    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10,
+    fontSize: 13.5, fontWeight: 600, cursor: 'pointer', border: 'none', fontFamily: T.bodyFont
+  };
+  if (variant === 'primary') return { ...base, background: T.primaryContainer, color: '#fff' };
+  if (variant === 'secondary') return { ...base, background: T.secondary, color: '#fff' };
+  if (variant === 'secondaryOutline') return { ...base, background: T.surfaceContainerHigh, color: T.onSurface };
+  if (variant === 'ghost') return { ...base, background: T.surfaceContainerLowest, color: T.onSurfaceVariant, boxShadow: T.shadow };
+  return base;
+}
+
+function pillActionStyle(active, danger) {
+  return {
+    padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+    background: active ? (danger ? T.error : T.surfaceContainerLowest) : 'transparent',
+    color: active ? (danger ? '#fff' : T.tertiary) : T.onSurfaceVariant,
+    boxShadow: active && !danger ? T.shadow : 'none'
+  };
+}
+
+const thStyle = { padding: '10px 16px', fontWeight: 700 };
+const tdStyle = { padding: '12px 16px' };
+const modalBackdrop = {
+  position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(40,48,68,.45)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
 };
+const modalCard = {
+  background: T.surfaceContainerLowest, borderRadius: T.radius.xl, boxShadow: T.shadowMd,
+  padding: 22, width: '100%', fontFamily: T.bodyFont
+};
+const modalLabel = { display: 'block', fontSize: 11.5, fontWeight: 600, color: T.onSurfaceVariant, marginBottom: 4 };
+const modalInput = {
+  width: '100%', padding: '9px 11px', borderRadius: 8, border: `1px solid ${T.surfaceContainerHigh}`,
+  background: T.surfaceContainerLow, fontSize: 13.5, fontFamily: T.bodyFont, boxSizing: 'border-box'
+};
+const iconBtn = { width: 32, height: 32, borderRadius: 8, border: 'none', background: T.surfaceContainerHigh, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' };

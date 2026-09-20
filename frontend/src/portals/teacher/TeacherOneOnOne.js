@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
-import Nav from '../../components/Nav';
+import TeacherShell from './TeacherShell';
+import { T } from './theme';
 
 export default function TeacherOneOnOne() {
   const [sessions, setSessions] = useState([]);
@@ -54,48 +55,64 @@ export default function TeacherOneOnOne() {
   }
 
   return (
-    <div>
-      <Nav brandSuffix="Teacher" links={[{ to: '/teacher', label: 'My Classes' }, { to: '/teacher/one-on-one', label: '1:1 Sessions' }]} />
-      <div className="container">
-        <h2>Schedule a 1:1 Class</h2>
-        <form onSubmit={schedule} className="card">
-          <label>Child</label>
-          {form.child_name ? (
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>{form.child_name}</span>
-              <button type="button" className="secondary" onClick={() => setForm((f) => ({ ...f, child_id: '', child_name: '' }))}>Change</button>
-            </div>
-          ) : (
-            <div>
-              <input placeholder="Search child by name..." value={query} onChange={(e) => searchChildren(e.target.value)} />
-              {results.map((r) => (
-                <div key={r.id} onClick={() => pickChild(r)} style={{ padding: 6, cursor: 'pointer', borderBottom: '1px solid #eee' }}>
-                  {r.name} ({r.category}) — parent: {r.parent_name}
-                </div>
-              ))}
-            </div>
-          )}
-          <label>Topic</label>
-          <input value={form.topic} onChange={(e) => setForm((f) => ({ ...f, topic: e.target.value }))} />
-          <label>Timing</label>
-          <input type="datetime-local" required value={form.timing} onChange={(e) => setForm((f) => ({ ...f, timing: e.target.value }))} />
-          <label>Notes</label>
-          <textarea rows={2} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
-          {error && <div className="error">{error}</div>}
-          <button className="gold" style={{ marginTop: 12 }} type="submit">Schedule</button>
-        </form>
+    <TeacherShell active="one-on-one">
+      <h1 style={{ fontFamily: T.headlineFont, fontSize: 24, fontWeight: 700, color: T.onSurface, margin: '0 0 16px' }}>
+        Schedule a 1:1 Class
+      </h1>
+      <form onSubmit={schedule} style={cardStyle}>
+        <label style={labelStyle}>Child</label>
+        {form.child_name ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>{form.child_name}</span>
+            <button type="button" onClick={() => setForm((f) => ({ ...f, child_id: '', child_name: '' }))} style={secondaryBtn}>Change</button>
+          </div>
+        ) : (
+          <div>
+            <input placeholder="Search child by name..." value={query} onChange={(e) => searchChildren(e.target.value)} style={inputStyle} />
+            {results.map((r) => (
+              <div key={r.id} onClick={() => pickChild(r)} style={{ padding: 8, cursor: 'pointer', borderBottom: `1px solid ${T.surfaceContainerHigh}`, fontSize: 13.5 }}>
+                {r.name} ({r.category}) — parent: {r.parent_name}
+              </div>
+            ))}
+          </div>
+        )}
+        <label style={labelStyle}>Topic</label>
+        <input value={form.topic} onChange={(e) => setForm((f) => ({ ...f, topic: e.target.value }))} style={inputStyle} />
+        <label style={labelStyle}>Timing</label>
+        <input type="datetime-local" required value={form.timing} onChange={(e) => setForm((f) => ({ ...f, timing: e.target.value }))} style={inputStyle} />
+        <label style={labelStyle}>Notes</label>
+        <textarea rows={2} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} style={{ ...inputStyle, resize: 'vertical' }} />
+        {error && <div style={{ color: T.error, fontSize: 12.5, marginTop: 8, background: T.errorContainer, padding: '7px 11px', borderRadius: 8 }}>{error}</div>}
+        <button type="submit" style={{ ...primaryBtn, marginTop: 12 }}>Schedule</button>
+      </form>
 
-        <h2>My 1:1 Sessions</h2>
+      <h1 style={{ fontFamily: T.headlineFont, fontSize: 20, fontWeight: 700, color: T.onSurface, margin: '24px 0 12px' }}>
+        My 1:1 Sessions
+      </h1>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {sessions.map((s) => (
-          <div key={s.id} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div key={s.id} style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <div>
               <strong>{s.child_name}</strong> — {s.topic || 'Session'}
-              <div style={{ fontSize: 12, color: '#64748b' }}>{new Date(s.timing).toLocaleString()} · {s.status}</div>
+              <div style={{ fontSize: 12, color: T.onSurfaceVariant }}>{new Date(s.timing).toLocaleString()} · {s.status}</div>
             </div>
-            {s.status === 'upcoming' && <button className="danger" onClick={() => cancelSession(s.id)}>Cancel</button>}
+            {s.status === 'upcoming' && <button onClick={() => cancelSession(s.id)} style={dangerBtn}>Cancel</button>}
           </div>
         ))}
       </div>
-    </div>
+    </TeacherShell>
   );
 }
+
+const cardStyle = {
+  background: T.surfaceContainerLowest, borderRadius: T.radius.lg, boxShadow: T.shadow,
+  padding: 18, fontFamily: T.bodyFont, marginBottom: 14
+};
+const labelStyle = { display: 'block', fontSize: 11.5, fontWeight: 600, color: T.onSurfaceVariant, margin: '12px 0 5px', textTransform: 'uppercase', letterSpacing: '.04em' };
+const inputStyle = {
+  width: '100%', padding: '9px 12px', borderRadius: 8, border: `1px solid ${T.surfaceContainerHigh}`,
+  background: T.surfaceContainerLow, fontSize: 13.5, fontFamily: T.bodyFont, boxSizing: 'border-box'
+};
+const primaryBtn = { padding: '10px 18px', borderRadius: 10, border: 'none', background: T.primaryContainer, color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13.5 };
+const secondaryBtn = { padding: '7px 14px', borderRadius: 8, border: `1px solid ${T.surfaceContainerHigh}`, background: '#fff', cursor: 'pointer', fontSize: 12.5 };
+const dangerBtn = { padding: '8px 14px', borderRadius: 8, border: 'none', background: T.errorContainer, color: T.onErrorContainer, fontWeight: 600, cursor: 'pointer', fontSize: 12.5 };

@@ -24,14 +24,23 @@ async function sendOtpEmail(toEmail, otpCode) {
         return { delivered: false };
     }
 
-    await transporter.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
-        to: toEmail,
-        subject: 'Your Edu Portal verification code',
-        text: `Your verification code is ${otpCode}. It expires in 10 minutes.`,
-        html: `<p>Your verification code is <b style="font-size:20px;letter-spacing:2px">${otpCode}</b>.</p><p>It expires in 10 minutes.</p>`
-    });
-    return { delivered: true };
+    try {
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
+            to: toEmail,
+            subject: 'Your Edu Portal verification code',
+            text: `Your verification code is ${otpCode}. It expires in 10 minutes.`,
+            html: `<p>Your verification code is <b style="font-size:20px;letter-spacing:2px">${otpCode}</b>.</p><p>It expires in 10 minutes.</p>`
+        });
+        return { delivered: true };
+    } catch (err) {
+        // SMTP is configured but the provider rejected the send (bad/expired
+        // credentials, quota, etc). Don't let a broken mail provider break
+        // login — fall back to the same dev-mode behavior as "not configured".
+        console.error('[OTP EMAIL FAILED]', err.code || '', err.message);
+        console.log(`[FALLBACK - SMTP send failed] OTP for ${toEmail}: ${otpCode}`);
+        return { delivered: false };
+    }
 }
 
 module.exports = { sendOtpEmail, smtpConfigured };

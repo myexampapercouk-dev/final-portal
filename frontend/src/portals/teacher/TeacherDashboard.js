@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
-import Nav from '../../components/Nav';
+import TeacherShell from './TeacherShell';
+import { T } from './theme';
 
 const STATUS_STYLE = {
-  completed: { background: '#dcfce7', color: '#166534' },
-  cancelled: { background: '#fee2e2', color: '#991b1b' },
-  scheduled: { background: '#e0f2fe', color: '#0369a1' }
+  completed: { bg: T.tertiaryFixed, fg: T.onTertiaryFixed, label: 'Completed' },
+  cancelled: { bg: T.errorContainer, fg: T.onErrorContainer, label: 'Cancelled' },
+  scheduled: { bg: T.secondaryFixed, fg: T.onSecondaryFixed, label: 'Scheduled' }
 };
 
 export default function TeacherDashboard() {
@@ -19,47 +20,53 @@ export default function TeacherDashboard() {
     setClasses(data);
   }
 
+  const initials = (name) => name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+
   return (
-    <div>
-      <Nav brandSuffix="Teacher" links={[
-        { to: '/teacher', label: 'My Classes' },
-        { to: '/teacher/one-on-one', label: '1:1 Sessions' }
-      ]} />
-      <div className="container">
-        <h2>My Assigned Classes</h2>
-        {classes.length === 0 && <p style={{ color: '#64748b' }}>No classes assigned yet.</p>}
-        {classes.map((c) => (
-          <Link key={c.id} to={`/teacher/class/${c.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-            <div className="card" style={styles.row}>
-              <div>
-                <strong style={{ fontSize: 15.5 }}>{c.title}</strong>
-                <div style={{ fontSize: 12.5, color: 'var(--meta)', marginTop: 2 }}>
-                  {c.course_name} · {new Date(c.timing).toLocaleString()}
+    <TeacherShell active="classes">
+      <h1 style={{ fontFamily: T.headlineFont, fontSize: 24, fontWeight: 700, color: T.onSurface, margin: '0 0 16px' }}>
+        My Assigned Classes
+      </h1>
+      {classes.length === 0 && <p style={{ color: T.onSurfaceVariant }}>No classes assigned yet.</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {classes.map((c) => {
+          const status = STATUS_STYLE[c.status] || STATUS_STYLE.scheduled;
+          return (
+            <Link key={c.id} to={`/teacher/class/${c.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+              <div style={{
+                background: T.surfaceContainerLowest, borderRadius: T.radius.lg, boxShadow: T.shadow,
+                padding: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 12, background: T.primaryFixed, color: T.onPrimaryFixed,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontFamily: T.headlineFont, flexShrink: 0
+                  }}>
+                    {initials(c.title)}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: T.onSurface }}>{c.title}</div>
+                    <div style={{ fontSize: 12.5, color: T.onSurfaceVariant, marginTop: 2 }}>
+                      {c.course_name} · {new Date(c.timing).toLocaleString()}
+                    </div>
+                    <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {c.categories?.map((cat) => (
+                        <span key={cat} style={{ background: T.secondaryFixed, color: T.onSecondaryFixed, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>{cat}</span>
+                      ))}
+                      <span style={{ background: T.surfaceContainerHigh, color: T.onSurfaceVariant, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 999 }}>
+                        {c.registered_count} registered
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {c.categories?.map((cat) => <span key={cat} className="badge">{cat}</span>)}
-                  <span className="badge" style={{ background: '#f1f5f9', color: '#334155' }}>
-                    {c.registered_count} registered
-                  </span>
-                </div>
+                <span style={{ background: status.bg, color: status.fg, fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 999, flexShrink: 0 }}>
+                  {status.label}
+                </span>
               </div>
-              <span className="badge" style={{ ...(STATUS_STYLE[c.status] || STATUS_STYLE.scheduled), flexShrink: 0 }}>
-                {c.status}
-              </span>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
-    </div>
+    </TeacherShell>
   );
 }
-
-const styles = {
-  row: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
-    transition: 'box-shadow .15s ease, transform .05s ease'
-  }
-};
