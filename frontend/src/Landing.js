@@ -1,32 +1,42 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Palette lifted from the stitch "My Exam Papers" landing page design.
+// Same navy/gold/cream system used across Parent, Teacher and Admin.
+const NAVY = 'var(--navy, #16243D)';
+const GOLD = 'var(--gold, #C9A227)';
+const GOLD_SOFT = 'var(--gold-soft, #E8D9A8)';
+const CREAM = 'var(--cream, #FAF6EE)';
+const PAPER = 'var(--paper, #FFFFFF)';
+const INK = 'var(--ink, #1D2433)';
+const META = 'var(--meta, #66707F)';
+const LINE = 'var(--line, #E6E1D5)';
+const GREEN = 'var(--green, #2E7D5B)';
+const RED = 'var(--red, #B4433A)';
 const C = {
-  primary: '#9b005f',
-  primaryContainer: '#c2187a',
+  primary: NAVY,
+  primaryContainer: NAVY,
   onPrimary: '#ffffff',
-  primaryFixed: '#ffd9e5',
-  onPrimaryFixed: '#3d0023',
-  secondary: '#006398',
-  secondaryFixed: '#cce5ff',
-  onSecondaryFixed: '#001d31',
-  secondaryContainer: '#5bb8fe',
-  onSecondaryContainer: '#00476e',
-  tertiary: '#005c25',
-  tertiaryFixed: '#7ffc97',
-  onTertiaryFixed: '#002109',
-  error: '#ba1a1a',
-  surface: '#faf8ff',
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerLow: '#f2f3ff',
-  surfaceContainer: '#eaedff',
-  surfaceContainerHigh: '#e2e7ff',
-  onSurface: '#131b2e',
-  onSurfaceVariant: '#584049',
-  outlineVariant: '#debec9',
-  headlineFont: "'Plus Jakarta Sans', -apple-system, sans-serif",
-  bodyFont: "'Inter', -apple-system, sans-serif"
+  primaryFixed: GOLD_SOFT,
+  onPrimaryFixed: NAVY,
+  secondary: NAVY,
+  secondaryFixed: GOLD_SOFT,
+  onSecondaryFixed: NAVY,
+  secondaryContainer: GOLD,
+  onSecondaryContainer: NAVY,
+  tertiary: GREEN,
+  tertiaryFixed: GOLD_SOFT,
+  onTertiaryFixed: NAVY,
+  error: RED,
+  surface: 'var(--canvas, #EEEAE0)',
+  surfaceContainerLowest: PAPER,
+  surfaceContainerLow: CREAM,
+  surfaceContainer: CREAM,
+  surfaceContainerHigh: LINE,
+  onSurface: INK,
+  onSurfaceVariant: META,
+  outlineVariant: LINE,
+  headlineFont: "'Lora', serif",
+  bodyFont: "'Poppins', -apple-system, sans-serif"
 };
 
 // Matches the exact category taxonomy the rest of the app uses
