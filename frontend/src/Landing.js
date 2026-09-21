@@ -371,13 +371,13 @@ export default function Landing() {
           <div style={{ maxWidth: 960, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, textAlign: 'left' }}>
             <GatewayCard icon="family_restroom" bg={C.primaryFixed} fg={C.primary} title="Parent Portal"
               desc="Access enrolled child profiles, upcoming classes, and offline invoice statements."
-              btnBg={C.primary} btnFg="#fff" btnLabel="Parent Sign In" onClick={() => navigate('/login')} />
+              btnBg={C.primary} btnFg="#fff" btnLabel="Parent Sign In" onClick={() => navigate('/login', { state: { role: 'parent' } })} />
             <GatewayCard icon="school" bg={C.secondaryFixed} fg={C.secondary} title="Teacher Portal"
               desc="Instructor credentials issued directly by Admin. View assigned classes and attendance registers."
-              btnBg={C.secondary} btnFg="#fff" btnLabel="Teacher Sign In" onClick={() => navigate('/login')} />
+              btnBg={C.secondary} btnFg="#fff" btnLabel="Teacher Sign In" onClick={() => navigate('/login', { state: { role: 'teacher' } })} />
             <GatewayCard icon="admin_panel_settings" bg={C.tertiaryFixed} fg={C.tertiary} title="Admin Portal"
               desc="Central administrative governance, tutor allocation, and consolidated cash invoicing."
-              btnBg={C.surfaceContainer} btnFg={C.onSurface} btnLabel="Admin Sign In" onClick={() => navigate('/login')} />
+              btnBg={C.surfaceContainer} btnFg={C.onSurface} btnLabel="Admin Sign In" onClick={() => navigate('/login', { state: { role: 'admin' } })} />
           </div>
         </section>
       </main>

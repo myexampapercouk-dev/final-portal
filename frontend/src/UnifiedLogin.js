@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navigate, useNavigate, Link } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import useIsMobile from './useIsMobile';
 
@@ -71,9 +71,13 @@ const ROLE_CARDS = [
     desc: 'Tutor management, course setup, cash invoice generation.', foot: 'Internal Access Only' }
 ];
 
+const VALID_ROLES = ['parent', 'teacher', 'admin'];
+
 export default function UnifiedLogin() {
   const isMobile = useIsMobile(900);
-  const [role, setRole] = useState('parent');
+  const location = useLocation();
+  const preselectedRole = VALID_ROLES.includes(location.state?.role) ? location.state.role : 'parent';
+  const [role, setRole] = useState(preselectedRole);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
