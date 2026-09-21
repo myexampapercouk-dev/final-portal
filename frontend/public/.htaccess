@@ -1,0 +1,13 @@
+# React Router (client-side routing) fix for Apache hosts like Hostinger.
+# Without this, directly opening or refreshing any deep link (e.g. /login,
+# /parent, /teacher/class/5) asks the server for a literal file at that path,
+# which doesn't exist - the server 404s before React Router ever gets a
+# chance to handle it in the browser. This rewrites every request that isn't
+# a real file/directory back to index.html so React Router can take over.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.html [L]
+</IfModule>
