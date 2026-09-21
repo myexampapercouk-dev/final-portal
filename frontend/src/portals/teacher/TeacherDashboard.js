@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../../api/axios';
-import TeacherTopNav from './TeacherTopNav';
+import TeacherShell from './TeacherShell';
 import { T, cardStyle, initials } from './theme';
 
 const STATUS_STYLE = {
@@ -10,9 +10,18 @@ const STATUS_STYLE = {
   scheduled: { bg: T.goldSoft, fg: '#7A5B00', label: 'Scheduled' }
 };
 
+const FILTERS = ['Active', 'Upcoming', 'Completed'];
+
+function matchesFilter(c, filter) {
+  const isPast = new Date(c.timing).getTime() <= Date.now();
+  if (filter === 'Completed') return c.status === 'completed';
+  if (filter === 'Active') return c.status === 'scheduled' && isPast;
+  return c.status === 'scheduled' && !isPast; // Upcoming
+}
+
 export default function TeacherDashboard() {
-  const location = useLocation();
   const [classes, setClasses] = useState([]);
+  const [filter, setFilter] = useState('Upcoming');
 
   useEffect(() => { load(); }, []);
 
@@ -21,17 +30,30 @@ export default function TeacherDashboard() {
     setClasses(data);
   }
 
+  const filtered = useMemo(() => classes.filter((c) => matchesFilter(c, filter)), [classes, filter]);
+
   return (
-    <div style={{ minHeight: '100vh', background: T.canvas, fontFamily: T.bodyFont }}>
-      <TeacherTopNav tabs={[
-        { label: 'My Classes', to: '/teacher', active: location.pathname === '/teacher' },
-        { label: '1:1 Sessions', to: '/teacher/one-on-one', active: location.pathname.startsWith('/teacher/one-on-one') }
-      ]} />
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px 60px' }}>
-        <h1 style={{ fontFamily: T.headlineFont, fontSize: 26, color: T.navy, margin: '0 0 16px' }}>My Assigned Classes</h1>
-        {classes.length === 0 && <p style={{ color: T.meta }}>No classes assigned yet.</p>}
+    <TeacherShell>
+      <h1 style={{ fontFamily: T.headlineFont, fontSize: 26, color: T.navy, margin: '0 0 16px' }}>My Assigned Classes</h1>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              style={{
+                padding: '8px 18px', borderRadius: 999, fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
+                border: `1.5px solid ${filter === f ? T.navy : T.line}`,
+                background: filter === f ? T.navy : '#fff',
+                color: filter === f ? '#fff' : T.navy
+              }}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+        {filtered.length === 0 && <p style={{ color: T.meta }}>No {filter.toLowerCase()} classes.</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {classes.map((c) => {
+          {filtered.map((c) => {
             const status = STATUS_STYLE[c.status] || STATUS_STYLE.scheduled;
             return (
               <Link key={c.id} to={`/teacher/class/${c.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
@@ -66,7 +88,6 @@ export default function TeacherDashboard() {
             );
           })}
         </div>
-      </div>
-    </div>
+    </TeacherShell>
   );
 }

@@ -1,16 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { P, initials } from './theme';
+import { T, initials } from './theme';
 
 const NAV = [
-  { to: '/parent', label: 'Dashboard', icon: '▦', exact: true },
-  { to: '/parent/upcoming', label: 'Upcoming Classes', icon: '\u{1F4C5}' },
-  { to: '/parent/register', label: 'Register for Classes', icon: '\u{1F4DD}' },
-  { to: '/parent/one-on-one', label: '1:1 Classes', icon: '\u{1F464}' },
-  { to: '/parent/attended', label: 'Classes Attended', icon: '☑' },
-  { to: '/parent/mock-exams', label: 'Mock Exams', icon: '\u{1F4C4}' },
-  { to: '/parent/invoices', label: 'Invoices', icon: '\u{1F4CB}' }
+  { to: '/teacher', label: 'My Classes', icon: '▦', match: (p) => p === '/teacher' || p.startsWith('/teacher/class') },
+  { to: '/teacher/one-on-one', label: '1:1 Sessions', icon: '\u{1F464}', match: (p) => p.startsWith('/teacher/one-on-one') }
 ];
 
 function useIsDesktop() {
@@ -23,7 +18,7 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-export default function ParentShell({ children }) {
+export default function TeacherShell({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,8 +32,8 @@ export default function ParentShell({ children }) {
       <div style={styles.brandRow}>
         <div style={styles.brandMark}>M</div>
         <div>
-          <div style={{ fontFamily: P.headlineFont, fontWeight: 700, fontSize: 15, color: '#fff' }}>MyExamPapers</div>
-          <div style={{ fontSize: 10, letterSpacing: '.1em', color: P.gold, textTransform: 'uppercase' }}>Portal</div>
+          <div style={{ fontFamily: T.headlineFont, fontWeight: 700, fontSize: 15, color: '#fff' }}>MyExamPapers</div>
+          <div style={{ fontSize: 10, letterSpacing: '.1em', color: T.gold, textTransform: 'uppercase' }}>Teacher</div>
         </div>
         {!isDesktop && (
           <button onClick={() => setDrawerOpen(false)} style={styles.closeBtn}>&times;</button>
@@ -46,15 +41,15 @@ export default function ParentShell({ children }) {
       </div>
       <nav style={{ flex: 1, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         {NAV.map((n) => {
-          const active = n.exact ? location.pathname === n.to : location.pathname.startsWith(n.to);
+          const active = n.match(location.pathname);
           return (
             <Link
               key={n.to}
               to={n.to}
               style={{
                 ...styles.navItem,
-                background: active ? P.gold : 'transparent',
-                color: active ? P.navy : '#C7CEDB',
+                background: active ? T.gold : 'transparent',
+                color: active ? T.navy : '#C7CEDB',
                 fontWeight: active ? 700 : 500
               }}
             >
@@ -68,7 +63,7 @@ export default function ParentShell({ children }) {
         <div style={styles.avatar}>{user?.name ? initials(user.name) : ''}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.name}</div>
-          <div style={{ fontSize: 11, color: '#8B96A8' }}>Parent account</div>
+          <div style={{ fontSize: 11, color: '#8B96A8' }}>Teacher account</div>
         </div>
         <button onClick={() => { logout(); navigate('/'); }} style={styles.logoutBtn}>Logout</button>
       </div>
@@ -76,17 +71,17 @@ export default function ParentShell({ children }) {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: P.canvas, fontFamily: P.bodyFont }}>
+    <div style={{ minHeight: '100vh', background: T.canvas, fontFamily: T.bodyFont }}>
       <header style={styles.header}>
         {!isDesktop && (
           <button onClick={() => setDrawerOpen(true)} style={styles.hamburger} aria-label="Open menu">
             <span style={styles.hamburgerBar} /><span style={styles.hamburgerBar} /><span style={styles.hamburgerBar} />
           </button>
         )}
-        <Link to="/parent" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+        <Link to="/teacher" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
           <div style={{ ...styles.brandMark, width: 28, height: 28, fontSize: 12 }}>M</div>
-          <span style={{ fontFamily: P.headlineFont, fontWeight: 700, color: P.navy, fontSize: 15 }}>
-            MyExamPapers <em style={{ color: P.gold, fontStyle: 'normal', fontFamily: P.bodyFont, fontSize: 12 }}>· Portal</em>
+          <span style={{ fontFamily: T.headlineFont, fontWeight: 700, color: T.navy, fontSize: 15 }}>
+            MyExamPapers <em style={{ color: T.gold, fontStyle: 'normal', fontFamily: T.bodyFont, fontSize: 12 }}>· Teacher</em>
           </span>
         </Link>
         <div style={{ flex: 1 }} />
@@ -114,25 +109,25 @@ export default function ParentShell({ children }) {
 const styles = {
   header: {
     position: 'fixed', top: 0, left: 0, right: 0, height: 60, zIndex: 50,
-    background: '#fff', borderBottom: `1px solid var(--line, #E6E1D5)`,
+    background: '#fff', borderBottom: `1px solid ${T.line}`,
     display: 'flex', alignItems: 'center', gap: 12, padding: '0 18px'
   },
   hamburger: { background: 'none', border: 'none', cursor: 'pointer', padding: 6, display: 'flex', flexDirection: 'column', gap: 4 },
-  hamburgerBar: { width: 20, height: 2, background: P.navy, borderRadius: 2 },
+  hamburgerBar: { width: 20, height: 2, background: T.navy, borderRadius: 2 },
   brandMark: {
-    width: 32, height: 32, borderRadius: 8, background: P.navy, color: P.gold,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontFamily: P.headlineFont, flexShrink: 0
+    width: 32, height: 32, borderRadius: 8, background: T.navy, color: T.gold,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontFamily: T.headlineFont, flexShrink: 0
   },
   avatarSm: {
-    width: 30, height: 30, borderRadius: '50%', background: P.gold, color: P.navy,
+    width: 30, height: 30, borderRadius: '50%', background: T.gold, color: T.navy,
     display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 12
   },
   sidebarDesktop: {
-    position: 'fixed', left: 0, top: 60, bottom: 0, width: 260, background: P.navy,
+    position: 'fixed', left: 0, top: 60, bottom: 0, width: 260, background: T.navy,
     display: 'flex', flexDirection: 'column', zIndex: 40
   },
   sidebarDrawer: {
-    position: 'fixed', left: 0, top: 0, bottom: 0, width: 260, background: P.navy,
+    position: 'fixed', left: 0, top: 0, bottom: 0, width: 260, background: T.navy,
     display: 'flex', flexDirection: 'column', zIndex: 70, boxShadow: '4px 0 24px rgba(0,0,0,.2)'
   },
   backdrop: { position: 'fixed', inset: 0, background: 'rgba(22,36,61,.5)', zIndex: 60 },
@@ -144,7 +139,7 @@ const styles = {
   },
   userRow: { display: 'flex', alignItems: 'center', gap: 10, padding: 16, borderTop: '1px solid rgba(255,255,255,.1)' },
   avatar: {
-    width: 34, height: 34, borderRadius: '50%', background: P.gold, color: P.navy,
+    width: 34, height: 34, borderRadius: '50%', background: T.gold, color: T.navy,
     display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0
   },
   logoutBtn: { background: 'transparent', border: '1px solid rgba(255,255,255,.3)', color: '#fff', fontSize: 11, padding: '5px 9px', borderRadius: 8, cursor: 'pointer' }

@@ -37,7 +37,7 @@ export default function Tutors() {
 
   return (
     <AdminShell>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <h1 style={{ fontFamily: A.headlineFont, fontSize: 26, color: A.navy, margin: 0 }}>Tutors</h1>
         <button style={btn(showForm ? 'secondary' : 'gold')} onClick={() => setShowForm((s) => !s)}>
           {showForm ? 'Close' : '+ Add Teacher'}
@@ -59,8 +59,8 @@ export default function Tutors() {
         </form>
       )}
 
-      <div style={{ background: A.paper, borderRadius: A.radius, boxShadow: A.shadow, border: `1px solid ${A.line}`, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
+      <div style={{ background: A.paper, borderRadius: A.radius, boxShadow: A.shadow, border: `1px solid ${A.line}`, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <table style={{ width: '100%', minWidth: 480, borderCollapse: 'collapse', fontSize: 13.5 }}>
           <thead>
             <tr style={{ background: A.navy, color: '#fff', textTransform: 'uppercase' }}>
               <th style={thStyle}>Name</th><th style={thStyle}>Email</th><th style={thStyle}>Phone</th><th style={thStyle}></th>

@@ -15,7 +15,6 @@ import OneOnOneClasses from './portals/parent/OneOnOneClasses';
 import ClassesAttended from './portals/parent/ClassesAttended';
 import MockExams from './portals/parent/MockExams';
 import ParentInvoices from './portals/parent/ParentInvoices';
-import FamilySettings from './portals/parent/FamilySettings';
 
 // Teacher portal
 import TeacherDashboard from './portals/teacher/TeacherDashboard';
@@ -57,7 +56,6 @@ export default function App() {
           <Route path="/parent/mock-exams" element={<ParentPage><MockExams /></ParentPage>} />
           <Route path="/parent/mock-exams/:id" element={<ParentPage><MockExams /></ParentPage>} />
           <Route path="/parent/invoices" element={<ParentPage><ParentInvoices /></ParentPage>} />
-          <Route path="/parent/settings" element={<ParentPage><FamilySettings /></ParentPage>} />
 
           {/* Teacher */}
           <Route path="/teacher" element={<PrivateRoute role="teacher"><TeacherDashboard /></PrivateRoute>} />

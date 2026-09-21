@@ -109,26 +109,28 @@ export default function CoursesAndClasses() {
                   No classes created under this course yet.
                 </p>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginTop: 12 }}>
-                  <thead>
-                    <tr style={{ background: A.navy, color: '#fff' }}>
-                      <th style={thStyle}>Title</th><th style={thStyle}>Teacher</th><th style={thStyle}>Timing</th>
-                      <th style={thStyle}>Categories</th><th style={thStyle}>Registered</th><th style={thStyle}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {courseClasses.map((cl) => (
-                      <tr key={cl.id} style={{ borderBottom: `1px solid ${A.line}` }}>
-                        <td style={tdStyle}>{cl.title}</td>
-                        <td style={tdStyle}>{cl.teacher_name}</td>
-                        <td style={tdStyle}>{new Date(cl.timing).toLocaleString()}</td>
-                        <td style={tdStyle}>{cl.categories?.join(', ')}</td>
-                        <td style={tdStyle}><span style={badge(A.cream, A.meta)}>{cl.registered_count} registered</span></td>
-                        <td style={tdStyle}>{cl.status}</td>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginTop: 12 }}>
+                  <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: A.navy, color: '#fff' }}>
+                        <th style={thStyle}>Title</th><th style={thStyle}>Teacher</th><th style={thStyle}>Timing</th>
+                        <th style={thStyle}>Categories</th><th style={thStyle}>Registered</th><th style={thStyle}>Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {courseClasses.map((cl) => (
+                        <tr key={cl.id} style={{ borderBottom: `1px solid ${A.line}` }}>
+                          <td style={tdStyle}>{cl.title}</td>
+                          <td style={tdStyle}>{cl.teacher_name}</td>
+                          <td style={tdStyle}>{new Date(cl.timing).toLocaleString()}</td>
+                          <td style={tdStyle}>{cl.categories?.join(', ')}</td>
+                          <td style={tdStyle}><span style={badge(A.cream, A.meta)}>{cl.registered_count} registered</span></td>
+                          <td style={tdStyle}>{cl.status}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )
             )}
           </div>
@@ -184,8 +186,8 @@ export default function CoursesAndClasses() {
         <button style={{ ...btn('gold'), marginTop: 12 }} type="submit">Create Class</button>
       </form>
 
-      <div style={{ background: A.paper, borderRadius: A.radius, boxShadow: A.shadow, border: `1px solid ${A.line}`, overflow: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      <div style={{ background: A.paper, borderRadius: A.radius, boxShadow: A.shadow, border: `1px solid ${A.line}`, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: A.navy, color: '#fff' }}>
               <th style={thStyle}>Title</th><th style={thStyle}>Course</th><th style={thStyle}>Teacher</th><th style={thStyle}>Timing</th>

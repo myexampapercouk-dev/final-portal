@@ -87,8 +87,8 @@ export default function AdminInvoices() {
               <h3 style={{ fontFamily: A.headlineFont, fontSize: 15, color: A.navy }}>Attended Classes — {selectedParent.name}'s Children</h3>
               {attendedClasses.length === 0 && <p style={{ color: A.meta }}>No attended classes to invoice yet.</p>}
               {attendedClasses.length > 0 && (
-                <div style={{ background: A.paper, borderRadius: A.radius, boxShadow: A.shadow, border: `1px solid ${A.line}`, overflow: 'auto', marginBottom: 12 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <div style={{ background: A.paper, borderRadius: A.radius, boxShadow: A.shadow, border: `1px solid ${A.line}`, overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: 12 }}>
+                  <table style={{ width: '100%', minWidth: 460, borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: A.navy, color: '#fff' }}>
                         <th style={thStyle}></th><th style={thStyle}>Child</th><th style={thStyle}>Class</th><th style={thStyle}>Date</th><th style={thStyle}>Amount (₹)</th>

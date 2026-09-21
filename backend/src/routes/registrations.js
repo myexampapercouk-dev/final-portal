@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { sendFeedbackEmail } = require('../utils/mailer');
 
 const router = express.Router();
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
@@ -225,6 +226,65 @@ router.post('/class/:classId/complete', requireAuth, requireRole('teacher'), asy
     [req.params.classId]
   );
   res.json({ success: true });
+});
+
+// ---------------------------------------------------------------
+// TEACHER: submit + finalise feedback for a class - every present student
+// must already have at least one subject remark. Marks the class completed
+// (same effect as the old "Complete Class" action) and emails each present
+// student's parent their child's feedback for this class.
+// ---------------------------------------------------------------
+router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher'), async (req, res) => {
+  const [cls] = await pool.query('SELECT * FROM classes WHERE id = ? AND teacher_id = ?', [
+    req.params.classId, req.user.id
+  ]);
+  if (!cls.length) return res.status(403).json({ error: 'Not your class' });
+
+  const [present] = await pool.query(
+    `SELECT cr.id AS registration_id, ch.id AS child_id, ch.name AS child_name,
+            u.id AS parent_id, u.name AS parent_name, u.email AS parent_email
+     FROM class_registrations cr
+     JOIN children ch ON ch.id = cr.child_id
+     JOIN users u ON u.id = ch.parent_id
+     WHERE cr.class_id = ? AND cr.present = 1`,
+    [req.params.classId]
+  );
+  if (!present.length) return res.status(400).json({ error: 'No students marked present' });
+
+  const [feedbackRows] = await pool.query(
+    `SELECT f.* FROM feedback f
+     JOIN class_registrations cr ON cr.id = f.registration_id
+     WHERE cr.class_id = ?`,
+    [req.params.classId]
+  );
+
+  const missing = present.filter((p) => !feedbackRows.some((f) => f.registration_id === p.registration_id));
+  if (missing.length) {
+    return res.status(400).json({
+      error: 'Every present student needs at least one subject remark first',
+      missing: missing.map((m) => m.child_name)
+    });
+  }
+
+  await pool.query('UPDATE classes SET status = \'completed\' WHERE id = ?', [req.params.classId]);
+  await pool.query(
+    `UPDATE class_registrations SET status = 'attended' WHERE class_id = ? AND status = 'upcoming'`,
+    [req.params.classId]
+  );
+
+  for (const p of present) {
+    const items = feedbackRows
+      .filter((f) => f.registration_id === p.registration_id)
+      .map((f) => ({ subject: f.subject, content: f.content }));
+    await sendFeedbackEmail(p.parent_email, {
+      parentName: p.parent_name,
+      childName: p.child_name,
+      className: cls[0].title,
+      items
+    });
+  }
+
+  res.json({ success: true, notified: present.length });
 });
 
 module.exports = router;
