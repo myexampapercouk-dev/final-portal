@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import useIsMobile from '../../useIsMobile';
@@ -49,8 +49,12 @@ export default function ParentRegister() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
-  const { registerParent } = useAuth();
+  const { user, registerParent } = useAuth();
   const navigate = useNavigate();
+
+  // Already signed in - this page creates a brand new account, so send an
+  // already-logged-in user to their own portal instead.
+  if (user) return <Navigate to={`/${user.role}`} replace />;
 
   function update(field, value) { setForm((f) => ({ ...f, [field]: value })); }
   function updateChild(field, value) { setChild((c) => ({ ...c, [field]: value })); }

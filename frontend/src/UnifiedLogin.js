@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import useIsMobile from './useIsMobile';
 
@@ -82,9 +82,14 @@ export default function UnifiedLogin() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
-  const { loginRequest, verifyLoginOtp } = useAuth();
+  const { user, loginRequest, verifyLoginOtp } = useAuth();
   const navigate = useNavigate();
   const copy = ROLE_COPY[role];
+
+  // Already signed in (e.g. someone edits the URL to /login while logged
+  // in) - send them straight to their own portal instead of showing the
+  // login form again.
+  if (user) return <Navigate to={`/${user.role}`} replace />;
 
   async function handleSubmit(e) {
     e.preventDefault();
