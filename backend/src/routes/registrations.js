@@ -256,6 +256,7 @@ router.put('/feedback/:id', requireAuth, requireRole('teacher'), async (req, res
 // PARENT: feedback for their child - only from classes where admin has approved it
 // ---------------------------------------------------------------
 router.get('/child/:childId/feedback', requireAuth, requireRole('parent'), async (req, res) => {
+  try {
   const child = await assertChildOwnership(req.params.childId, req.user.id);
   if (!child) return res.status(403).json({ error: 'Not your child' });
   const [rows] = await pool.query(
@@ -270,6 +271,10 @@ router.get('/child/:childId/feedback', requireAuth, requireRole('parent'), async
     [req.params.childId]
   );
   res.json(rows);
+  } catch (err) {
+    console.error('[PARENT FEEDBACK]', err.message);
+    res.status(500).json({ error: 'Could not load feedback', details: err.message });
+  }
 });
 
 // ---------------------------------------------------------------

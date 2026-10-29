@@ -7,6 +7,10 @@ ALTER TABLE children MODIFY parent_id INT NULL;
 ALTER TABLE children MODIFY dob DATE NULL;
 ALTER TABLE children ADD COLUMN added_by_teacher_id INT NULL;
 
+-- Columns that older databases may be missing (safe to skip if you get "Duplicate column")
+ALTER TABLE feedback ADD COLUMN subject VARCHAR(40) NULL AFTER registration_id;
+ALTER TABLE one_on_one_classes ADD COLUMN end_timing DATETIME NULL;
+
 -- Class booking details + feedback approval state
 ALTER TABLE classes ADD COLUMN end_timing DATETIME NULL;
 ALTER TABLE classes ADD COLUMN venue VARCHAR(200) NULL;

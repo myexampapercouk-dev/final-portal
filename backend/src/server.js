@@ -15,6 +15,12 @@ const adminRoutes = require('./routes/admin');
 const homeworkRoutes = require('./routes/homework');
 const { startCategoryUpgradeJob } = require('./utils/categoryUpgrade');
 
+// Express 4 does not catch errors thrown inside async route handlers. Without
+// these, one failed query crashes the process and every in-flight request
+// (from every user) fails with a network error until the host restarts it.
+process.on('unhandledRejection', (err) => console.error('[UNHANDLED REJECTION]', err));
+process.on('uncaughtException', (err) => console.error('[UNCAUGHT EXCEPTION]', err));
+
 const app = express();
 app.use(cors());
 app.use(express.json());

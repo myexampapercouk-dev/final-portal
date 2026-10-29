@@ -92,6 +92,22 @@ router.get('/', requireAuth, async (req, res) => {
   } else {
     return res.status(403).json({ error: 'Forbidden' });
   }
+
+  // Attach each invoice's line items so the list can say which child / class it is for
+  if (rows.length) {
+    const ids = rows.map((r) => r.id);
+    const [items] = await pool.query(
+      `SELECT ii.id, ii.invoice_id, ii.amount, ii.description, ii.child_id, ii.class_id,
+              ch.name AS child_name, c.title AS class_title, c.timing AS class_timing
+       FROM invoice_items ii
+       LEFT JOIN children ch ON ch.id = ii.child_id
+       LEFT JOIN classes c ON c.id = ii.class_id
+       WHERE ii.invoice_id IN (${ids.map(() => '?').join(',')})
+       ORDER BY ch.name, c.timing`,
+      ids
+    );
+    rows = rows.map((r) => ({ ...r, items: items.filter((i) => i.invoice_id === r.id) }));
+  }
   res.json(rows);
 });
 
@@ -104,7 +120,7 @@ router.get('/:id', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'Forbidden' });
   }
   const [items] = await pool.query(
-    `SELECT ii.*, ch.name AS child_name, c.title AS class_title
+    `SELECT ii.*, ch.name AS child_name, c.title AS class_title, c.timing AS class_timing
      FROM invoice_items ii
      JOIN children ch ON ch.id = ii.child_id
      JOIN classes c ON c.id = ii.class_id
