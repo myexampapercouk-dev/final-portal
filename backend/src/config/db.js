@@ -9,7 +9,10 @@ const config = {
   database: process.env.DB_NAME || 'edu_portal',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  // Return DATE columns (date of birth, exam date) as plain 'YYYY-MM-DD' text so
+  // they never shift a day when the server and browser are in different timezones
+  dateStrings: ['DATE']
 };
 
 // Log the config being used at boot (password redacted) so it's visible in

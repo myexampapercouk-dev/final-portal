@@ -44,7 +44,7 @@ async function attachExtras(classes) {
 router.post('/', requireAuth, requireRole('admin'), uploadMaterials, async (req, res) => {
   const conn = await pool.getConnection();
   try {
-    const { course_id, title, teacher_id, timing } = req.body;
+    const { course_id, title, teacher_id, timing, end_timing, venue, price } = req.body;
     let categories = req.body.categories || [];
     if (!Array.isArray(categories)) categories = [categories];
 
@@ -56,8 +56,8 @@ router.post('/', requireAuth, requireRole('admin'), uploadMaterials, async (req,
 
     await conn.beginTransaction();
     const [result] = await conn.query(
-      `INSERT INTO classes (course_id, teacher_id, title, timing) VALUES (?,?,?,?)`,
-      [course_id, teacher_id, title, timing]
+      `INSERT INTO classes (course_id, teacher_id, title, timing, end_timing, venue, price) VALUES (?,?,?,?,?,?,?)`,
+      [course_id, teacher_id, title, timing, end_timing || null, venue || null, price === '' || price === undefined ? null : price]
     );
     const classId = result.insertId;
 
@@ -148,15 +148,18 @@ router.get('/available', requireAuth, requireRole('parent'), async (req, res) =>
 
 // Update a class (admin only) - text fields only; materials are managed via /:id/materials
 router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
-  const { title, teacher_id, timing } = req.body;
+  const { title, teacher_id, timing, end_timing, venue, price } = req.body;
   const [existing] = await pool.query('SELECT * FROM classes WHERE id = ?', [req.params.id]);
   if (!existing.length) return res.status(404).json({ error: 'Class not found' });
   await pool.query(
-    `UPDATE classes SET title=?, teacher_id=?, timing=? WHERE id=?`,
+    `UPDATE classes SET title=?, teacher_id=?, timing=?, end_timing=?, venue=?, price=? WHERE id=?`,
     [
       title ?? existing[0].title,
       teacher_id ?? existing[0].teacher_id,
       timing ?? existing[0].timing,
+      end_timing === undefined ? existing[0].end_timing : (end_timing || null),
+      venue === undefined ? existing[0].venue : (venue || null),
+      price === undefined ? existing[0].price : (price === '' ? null : price),
       req.params.id
     ]
   );

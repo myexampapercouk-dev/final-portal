@@ -26,3 +26,5 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 .vscode/
+# Private homework PDFs (user content, served only via authenticated route)
+backend/private/

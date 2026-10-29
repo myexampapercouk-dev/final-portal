@@ -43,17 +43,14 @@ async function sendOtpEmail(toEmail, otpCode) {
     }
 }
 
-// Sends a per-child feedback summary email to a parent after a teacher
-// submits and finalises a class's feedback. If SMTP isn't configured, logs
-// instead of failing so the class-completion flow never breaks locally.
-async function sendFeedbackEmail(toEmail, { parentName, childName, className, items }) {
-    const lines = items.map((i) => `${i.subject || 'General'}: ${i.content}`).join('\n');
-    const htmlItems = items
-        .map((i) => `<li><strong>${i.subject || 'General'}:</strong> ${i.content}</li>`)
-        .join('');
+// Tells a parent that admin has approved the feedback for their child's class.
+// Only a short message and a button - the feedback itself is read in the portal.
+async function sendFeedbackReadyEmail(toEmail, { parentName, childName, className }) {
+    const portalUrl = process.env.PORTAL_URL || 'https://portal.myexampapers.co.uk';
+    const link = `${portalUrl}/parent`;
 
     if (!transporter) {
-        console.log(`[DEV - no SMTP configured] Feedback email for ${toEmail} (${childName} - ${className}):\n${lines}`);
+        console.log(`[DEV - no SMTP configured] Feedback-ready email for ${toEmail} (${childName} - ${className}) -> ${link}`);
         return { delivered: false };
     }
 
@@ -61,16 +58,15 @@ async function sendFeedbackEmail(toEmail, { parentName, childName, className, it
         await transporter.sendMail({
             from: process.env.SMTP_FROM || process.env.SMTP_USER,
             to: toEmail,
-            subject: `Feedback for ${childName} - ${className}`,
-            text: `Hi ${parentName},\n\nHere is today's feedback for ${childName} from ${className}:\n\n${lines}`,
-            html: `<p>Hi ${parentName},</p><p>Here is today's feedback for <b>${childName}</b> from <b>${className}</b>:</p><ul>${htmlItems}</ul>`
+            subject: `${className} completed - feedback for ${childName} is ready`,
+            text: `Hi ${parentName},\n\n${className} has been completed and the teacher's feedback for ${childName} is now available.\n\nView it in the portal: ${link}`,
+            html: `<p>Hi ${parentName},</p><p><b>${className}</b> has been completed and the teacher's feedback for <b>${childName}</b> is now available.</p><p><a href="${link}" style="display:inline-block;background:#C9A227;color:#16243D;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none">View in portal</a></p>`
         });
         return { delivered: true };
     } catch (err) {
         console.error('[FEEDBACK EMAIL FAILED]', err.code || '', err.message);
-        console.log(`[FALLBACK - SMTP send failed] Feedback email for ${toEmail}:\n${lines}`);
         return { delivered: false };
     }
 }
 
-module.exports = { sendOtpEmail, sendFeedbackEmail, smtpConfigured };
+module.exports = { sendOtpEmail, sendFeedbackReadyEmail, smtpConfigured };

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../api/axios';
 import ParentShell from './ParentShell';
 import ChildPills from './ChildPills';
+import ClassDetails from './ClassDetails';
 import { useParent } from './ParentContext';
 import { P, cardStyle, btn, STATUS } from './theme';
 
@@ -56,10 +57,8 @@ export default function UpcomingClasses() {
                   <div style={{ fontWeight: 600, color: P.navy, fontFamily: P.headlineFont, fontSize: 16 }}>{r.title}</div>
                   <span style={STATUS.upcoming ? { ...badgeStyle, background: STATUS.upcoming.bg, color: STATUS.upcoming.fg } : {}}>{STATUS.upcoming.label}</span>
                 </div>
-                <div style={{ fontSize: 12.5, color: P.meta, marginTop: 2 }}>
-                  {new Date(r.timing).toLocaleString(undefined, { weekday: 'long', hour: '2-digit', minute: '2-digit' })} · Teacher: {r.teacher_name}
-                </div>
-                <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                <ClassDetails c={r} />
+                <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
                   <button
                     style={btn('danger')}
                     disabled={!canCancel(r.timing)}

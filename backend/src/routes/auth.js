@@ -10,6 +10,14 @@ require('dotenv').config();
 const router = express.Router();
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
+// Email verification codes are switched OFF unless OTP_REQUIRED=true is set in
+// the environment. To turn them back on later, set OTP_REQUIRED=true and
+// restart the backend - nothing else needs to change.
+const OTP_REQUIRED = String(process.env.OTP_REQUIRED).toLowerCase() === 'true';
+
+// The frontend reads this to decide whether to show the "enter your code" step.
+router.get('/config', (req, res) => res.json({ otpRequired: OTP_REQUIRED }));
+
 function signToken(user) {
   return jwt.sign(
     { id: user.id, role: user.role, name: user.name, email: user.email },
@@ -25,6 +33,7 @@ function signToken(user) {
 // ---------------------------------------------------------------
 router.post('/parent/send-otp', async (req, res) => {
   try {
+    if (!OTP_REQUIRED) return res.json({ success: true, otpDisabled: true });
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'email is required' });
 
@@ -62,31 +71,32 @@ router.post('/parent/register', async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'name, email and password are required' });
     }
-    if (!otp) {
+    if (OTP_REQUIRED && !otp) {
       return res.status(400).json({ error: 'Email verification code is required' });
     }
 
     const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
     if (existing.length) return res.status(409).json({ error: 'Email already registered' });
 
-    const [otpRows] = await pool.query(
-      `SELECT * FROM email_otps
-       WHERE email = ? AND purpose = 'parent_signup' AND consumed = 0
-       ORDER BY id DESC LIMIT 1`,
-      [email]
-    );
-    if (!otpRows.length) {
-      return res.status(400).json({ error: 'No verification code found for this email. Request a new one.' });
+    if (OTP_REQUIRED) {
+      const [otpRows] = await pool.query(
+        `SELECT * FROM email_otps
+         WHERE email = ? AND purpose = 'parent_signup' AND consumed = 0
+         ORDER BY id DESC LIMIT 1`,
+        [email]
+      );
+      if (!otpRows.length) {
+        return res.status(400).json({ error: 'No verification code found for this email. Request a new one.' });
+      }
+      const record = otpRows[0];
+      if (new Date(record.expires_at).getTime() < Date.now()) {
+        return res.status(400).json({ error: 'Verification code expired. Request a new one.' });
+      }
+      if (record.otp_code !== String(otp)) {
+        return res.status(400).json({ error: 'Incorrect verification code' });
+      }
+      await pool.query('UPDATE email_otps SET consumed = 1 WHERE id = ?', [record.id]);
     }
-    const record = otpRows[0];
-    if (new Date(record.expires_at).getTime() < Date.now()) {
-      return res.status(400).json({ error: 'Verification code expired. Request a new one.' });
-    }
-    if (record.otp_code !== String(otp)) {
-      return res.status(400).json({ error: 'Incorrect verification code' });
-    }
-
-    await pool.query('UPDATE email_otps SET consumed = 1 WHERE id = ?', [record.id]);
 
     const hash = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
@@ -120,7 +130,7 @@ router.post('/login', async (req, res) => {
     console.log('[LOGIN] password match:', ok);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-    if (user.role === 'parent') {
+    if (user.role === 'parent' && OTP_REQUIRED) {
       const otp = String(crypto.randomInt(100000, 999999));
       const expiresAt = new Date(Date.now() + OTP_TTL_MS);
       await pool.query(

@@ -12,6 +12,8 @@ const oneOnOneRoutes = require('./routes/oneOnOne');
 const mockExamsRoutes = require('./routes/mockExams');
 const invoicesRoutes = require('./routes/invoices');
 const adminRoutes = require('./routes/admin');
+const homeworkRoutes = require('./routes/homework');
+const { startCategoryUpgradeJob } = require('./utils/categoryUpgrade');
 
 const app = express();
 app.use(cors());
@@ -31,6 +33,7 @@ app.use('/api/one-on-one', oneOnOneRoutes);
 app.use('/api/mock-exams', mockExamsRoutes);
 app.use('/api/invoices', invoicesRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/homework', homeworkRoutes);
 
 // Central error handler (fallback)
 app.use((err, req, res, next) => {
@@ -39,4 +42,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Edu Portal API running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Edu Portal API running on port ${PORT}`);
+  startCategoryUpgradeJob();
+});

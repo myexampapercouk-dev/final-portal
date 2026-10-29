@@ -45,7 +45,7 @@ export const STATUS = {
   absent: { bg: P.redWash, fg: P.red, label: 'Absent' },
   cancelled: { bg: P.redWash, fg: P.red, label: 'Cancelled' },
   paid: { bg: P.greenWash, fg: P.green, label: 'Paid' },
-  unpaid: { bg: P.goldSoft, fg: '#7A5B00', label: 'Due' }
+  unpaid: { bg: P.redWash, fg: P.red, label: 'Due' }
 };
 
 export function btn(variant) {

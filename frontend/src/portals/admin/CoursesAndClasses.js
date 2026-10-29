@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api, { FILE_BASE_URL } from '../../api/axios';
 import AdminShell from './AdminShell';
 import { A, cardStyle, btn, labelStyle, inputStyle, badge, thStyle, tdStyle } from './theme';
 
 const CATEGORIES = ['7+', '8+', '9+', '10+', '11+', '13+'];
-const EMPTY_CLASS_FORM = { course_id: '', title: '', teacher_id: '', timing: '', categories: [] };
+const EMPTY_CLASS_FORM = { course_id: '', title: '', teacher_id: '', timing: '', end_timing: '', venue: '', price: '', categories: [] };
 
 export default function CoursesAndClasses() {
   const [courses, setCourses] = useState([]);
@@ -60,6 +61,9 @@ export default function CoursesAndClasses() {
       fd.append('title', classForm.title);
       fd.append('teacher_id', classForm.teacher_id);
       fd.append('timing', classForm.timing);
+      fd.append('end_timing', classForm.end_timing);
+      fd.append('venue', classForm.venue);
+      fd.append('price', classForm.price);
       classForm.categories.forEach((cat) => fd.append('categories', cat));
       materialFiles.filter(Boolean).forEach((file) => fd.append('materials', file));
 
@@ -151,8 +155,14 @@ export default function CoursesAndClasses() {
           <option value="">Select a teacher</option>
           {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
-        <label style={labelStyle}>Timing</label>
+        <label style={labelStyle}>Start time</label>
         <input required type="datetime-local" value={classForm.timing} onChange={(e) => setClassForm((f) => ({ ...f, timing: e.target.value }))} style={inputStyle} />
+        <label style={labelStyle}>End time</label>
+        <input required type="datetime-local" value={classForm.end_timing} onChange={(e) => setClassForm((f) => ({ ...f, end_timing: e.target.value }))} style={inputStyle} />
+        <label style={labelStyle}>Venue</label>
+        <input required value={classForm.venue} onChange={(e) => setClassForm((f) => ({ ...f, venue: e.target.value }))} placeholder="e.g. Room 2, Main Campus" style={inputStyle} />
+        <label style={labelStyle}>Price (£)</label>
+        <input required type="number" min="0" step="0.01" value={classForm.price} onChange={(e) => setClassForm((f) => ({ ...f, price: e.target.value }))} style={inputStyle} />
 
         <label style={labelStyle}>Category (multi-select)</label>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
@@ -187,11 +197,11 @@ export default function CoursesAndClasses() {
       </form>
 
       <div style={{ background: A.paper, borderRadius: A.radius, boxShadow: A.shadow, border: `1px solid ${A.line}`, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', fontSize: 13 }}>
+        <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: A.navy, color: '#fff' }}>
               <th style={thStyle}>Title</th><th style={thStyle}>Course</th><th style={thStyle}>Teacher</th><th style={thStyle}>Timing</th>
-              <th style={thStyle}>Categories</th><th style={thStyle}>Registered</th><th style={thStyle}>Materials</th><th style={thStyle}>Status</th>
+              <th style={thStyle}>Venue</th><th style={thStyle}>Price</th><th style={thStyle}>Categories</th><th style={thStyle}>Registered</th><th style={thStyle}>Materials</th><th style={thStyle}>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -200,7 +210,12 @@ export default function CoursesAndClasses() {
                 <td style={tdStyle}>{c.title}</td>
                 <td style={tdStyle}>{c.course_name}</td>
                 <td style={tdStyle}>{c.teacher_name}</td>
-                <td style={tdStyle}>{new Date(c.timing).toLocaleString()}</td>
+                <td style={tdStyle}>
+                  {new Date(c.timing).toLocaleString()}
+                  {c.end_timing && <div style={{ fontSize: 12, color: A.meta }}>to {new Date(c.end_timing).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>}
+                </td>
+                <td style={tdStyle}>{c.venue || '-'}</td>
+                <td style={tdStyle}>{c.price !== null && c.price !== undefined ? '£' + Number(c.price).toFixed(2) : '-'}</td>
                 <td style={tdStyle}>{c.categories?.join(', ')}</td>
                 <td style={tdStyle}><span style={badge(A.cream, A.meta)}>{c.registered_count} registered</span></td>
                 <td style={tdStyle}>
@@ -212,7 +227,11 @@ export default function CoursesAndClasses() {
                     ))
                     : <span style={{ color: A.meta }}>—</span>}
                 </td>
-                <td style={tdStyle}>{c.status}</td>
+                <td style={tdStyle}>
+                  {c.status}
+                  {c.feedback_status === 'pending' && <div><Link to={'/admin/approvals/' + c.id} style={{ color: A.red, fontWeight: 700, fontSize: 12 }}>Review feedback</Link></div>}
+                  {c.feedback_status === 'approved' && <div><Link to={'/admin/approvals/' + c.id} style={{ color: A.meta, fontSize: 12 }}>View feedback</Link></div>}
+                </td>
               </tr>
             ))}
           </tbody>

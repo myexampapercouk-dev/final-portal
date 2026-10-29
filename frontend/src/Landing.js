@@ -40,11 +40,6 @@ const C = {
   bodyFont: "'Poppins', -apple-system, sans-serif"
 };
 
-// Matches the exact category taxonomy the rest of the app uses
-// (AddChildModal.js) — a child's category gates which classes they can see,
-// so this list must never drift from the real one.
-const CATEGORIES = ['7+', '8+', '9+', '10+', '11+', '13+'];
-
 function scrollTo(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -55,7 +50,6 @@ export default function Landing() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [form, setForm] = useState({
     name: '', email: '', password: '',
-    childName: '', childDob: '', category: '', targetExam: '', allergies: '',
     agree: false
   });
 
@@ -67,14 +61,7 @@ export default function Landing() {
       state: {
         name: form.name,
         email: form.email,
-        password: form.password,
-        child: {
-          name: form.childName,
-          dob: form.childDob,
-          category: form.category,
-          target_exam: form.targetExam,
-          allergies: form.allergies
-        }
+        password: form.password
       }
     });
   }
@@ -308,7 +295,7 @@ export default function Landing() {
               <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: C.primary }}>Direct Parent Access</span>
               <h2 style={{ fontFamily: C.headlineFont, fontSize: 26, fontWeight: 700, margin: '4px 0 8px' }}>Parent Self-Registration Intake</h2>
               <p style={{ fontSize: 13, color: C.onSurfaceVariant }}>
-                Create your primary parent account to access the dashboard and register your child's examination category.
+                Create your primary parent account to access the dashboard. You can add your child's profile once you're signed in.
               </p>
             </div>
 
@@ -325,28 +312,6 @@ export default function Landing() {
                 <Field label="Secure Password">
                   <input required type="password" value={form.password} onChange={(e) => update('password', e.target.value)} placeholder="••••••••••••" style={styles.input} />
                 </Field>
-                <Field label="First Child's Full Name">
-                  <input required value={form.childName} onChange={(e) => update('childName', e.target.value)} placeholder="e.g. George Pendelton" style={styles.input} />
-                </Field>
-              </div>
-              <div style={styles.formGrid}>
-                <Field label="Child's Date of Birth">
-                  <input required type="date" value={form.childDob} onChange={(e) => update('childDob', e.target.value)} style={styles.input} />
-                </Field>
-                <Field label="Child's Category">
-                  <select required value={form.category} onChange={(e) => update('category', e.target.value)} style={styles.input}>
-                    <option value="">Select a category</option>
-                    {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </Field>
-              </div>
-              <div style={styles.formGrid}>
-                <Field label="Target Exam (optional)">
-                  <input value={form.targetExam} onChange={(e) => update('targetExam', e.target.value)} placeholder="e.g. Westminster Under 7+" style={styles.input} />
-                </Field>
-                <Field label="Allergies (optional)">
-                  <input value={form.allergies} onChange={(e) => update('allergies', e.target.value)} placeholder="e.g. Nuts, none" style={styles.input} />
-                </Field>
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12, background: C.surfaceContainer, fontSize: 12.5, color: C.onSurfaceVariant, cursor: 'pointer' }}>
                 <input required type="checkbox" checked={form.agree} onChange={(e) => update('agree', e.target.checked)} style={{ width: 18, height: 18, accentColor: C.primary }} />
@@ -356,7 +321,7 @@ export default function Landing() {
                 Complete Parent Registration <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_forward</span>
               </button>
               <p style={{ fontSize: 11.5, color: C.onSurfaceVariant, textAlign: 'center', margin: 0 }}>
-                You'll verify your email with a one-time code on the next step — {form.childName || 'your child'} is added to your dashboard automatically once verified.
+                You'll review your details on the next step and your account is created.
               </p>
             </form>
           </div>

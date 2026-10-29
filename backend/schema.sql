@@ -27,12 +27,13 @@ CREATE TABLE users (
 -- ------------------------------------------------------------
 CREATE TABLE children (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  parent_id INT NOT NULL,
+  parent_id INT NULL, -- NULL for children added by a teacher until admin links a parent
   name VARCHAR(150) NOT NULL,
-  dob DATE NOT NULL,
+  dob DATE NULL,
   target_exam VARCHAR(150),
   allergies VARCHAR(255),
   category VARCHAR(50) NOT NULL, -- e.g. '7+', '8+'
+  added_by_teacher_id INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (parent_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -63,6 +64,10 @@ CREATE TABLE classes (
   timing DATETIME NOT NULL,
   material_url VARCHAR(500),
   status ENUM('scheduled','completed','cancelled') DEFAULT 'scheduled',
+  end_timing DATETIME NULL,
+  venue VARCHAR(200) NULL,
+  price DECIMAL(10,2) NULL,
+  feedback_status ENUM('none','pending','approved') NOT NULL DEFAULT 'none',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
   FOREIGN KEY (teacher_id) REFERENCES users(id) ON DELETE CASCADE
@@ -170,6 +175,37 @@ CREATE TABLE class_materials (
   file_path VARCHAR(500) NOT NULL,
   uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
+);
+
+-- Homework (question PDF + optional answer PDF) per class
+CREATE TABLE IF NOT EXISTS homework (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  class_id INT NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  file_path VARCHAR(500) NOT NULL,
+  answer_file_name VARCHAR(255) NULL,
+  answer_file_path VARCHAR(500) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
+);
+
+-- Admin notification bell (new child added, feedback awaiting approval, ...)
+CREATE TABLE IF NOT EXISTS notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  type VARCHAR(40) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  body VARCHAR(500) NULL,
+  link VARCHAR(255) NULL,
+  ref_id INT NULL,
+  status ENUM('open','done','dismissed') NOT NULL DEFAULT 'open',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Small key/value store (used for the yearly 1 September category upgrade)
+CREATE TABLE IF NOT EXISTS system_meta (
+  k VARCHAR(50) PRIMARY KEY,
+  v VARCHAR(255) NOT NULL
 );
 
 -- Email OTPs for parent signup/login verification

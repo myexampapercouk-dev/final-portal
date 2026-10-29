@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 import Landing from './Landing';
@@ -15,6 +15,9 @@ import OneOnOneClasses from './portals/parent/OneOnOneClasses';
 import ClassesAttended from './portals/parent/ClassesAttended';
 import MockExams from './portals/parent/MockExams';
 import ParentInvoices from './portals/parent/ParentInvoices';
+import Homework from './portals/parent/Homework';
+import MyChildren from './portals/parent/MyChildren';
+import PdfViewer from './portals/parent/PdfViewer';
 
 // Teacher portal
 import TeacherDashboard from './portals/teacher/TeacherDashboard';
@@ -27,6 +30,21 @@ import Tutors from './portals/admin/Tutors';
 import CoursesAndClasses from './portals/admin/CoursesAndClasses';
 import Parents from './portals/admin/Parents';
 import AdminInvoices from './portals/admin/AdminInvoices';
+import Students from './portals/admin/Students';
+import AdminHomework from './portals/admin/AdminHomework';
+import FeedbackApproval from './portals/admin/FeedbackApproval';
+
+// Right-click is disabled across the whole site except the admin portal.
+function RightClickGuard() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (pathname.startsWith('/admin')) return undefined;
+    const block = (e) => e.preventDefault();
+    document.addEventListener('contextmenu', block);
+    return () => document.removeEventListener('contextmenu', block);
+  }, [pathname]);
+  return null;
+}
 
 function ParentPage({ children }) {
   return (
@@ -40,6 +58,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <RightClickGuard />
         <Routes>
           <Route path="/" element={<Landing />} />
 
@@ -56,6 +75,9 @@ export default function App() {
           <Route path="/parent/mock-exams" element={<ParentPage><MockExams /></ParentPage>} />
           <Route path="/parent/mock-exams/:id" element={<ParentPage><MockExams /></ParentPage>} />
           <Route path="/parent/invoices" element={<ParentPage><ParentInvoices /></ParentPage>} />
+          <Route path="/parent/homework" element={<ParentPage><Homework /></ParentPage>} />
+          <Route path="/parent/children" element={<ParentPage><MyChildren /></ParentPage>} />
+          <Route path="/parent/view/:id/:kind" element={<PrivateRoute role="parent"><PdfViewer /></PrivateRoute>} />
 
           {/* Teacher */}
           <Route path="/teacher" element={<PrivateRoute role="teacher"><TeacherDashboard /></PrivateRoute>} />
@@ -68,6 +90,9 @@ export default function App() {
           <Route path="/admin/courses" element={<PrivateRoute role="admin"><CoursesAndClasses /></PrivateRoute>} />
           <Route path="/admin/parents" element={<PrivateRoute role="admin"><Parents /></PrivateRoute>} />
           <Route path="/admin/invoices" element={<PrivateRoute role="admin"><AdminInvoices /></PrivateRoute>} />
+          <Route path="/admin/students" element={<PrivateRoute role="admin"><Students /></PrivateRoute>} />
+          <Route path="/admin/homework" element={<PrivateRoute role="admin"><AdminHomework /></PrivateRoute>} />
+          <Route path="/admin/approvals/:id" element={<PrivateRoute role="admin"><FeedbackApproval /></PrivateRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

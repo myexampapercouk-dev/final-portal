@@ -30,11 +30,13 @@ export default function ChildPills({ onAddChild }) {
         <button
           onClick={onAddChild}
           style={{
-            textAlign: 'left', padding: '10px 16px', borderRadius: 12, cursor: 'pointer',
-            border: `1.5px dashed ${P.line}`, background: 'transparent', color: P.meta, fontFamily: P.bodyFont, minWidth: 110
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            padding: '10px 18px', borderRadius: 12, cursor: 'pointer', alignSelf: 'stretch',
+            border: 'none', background: P.gold, color: P.navy, fontFamily: P.bodyFont,
+            fontWeight: 700, fontSize: 13.5, boxShadow: '0 2px 8px rgba(201,162,39,.35)'
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: 13.5 }}>+ Add a child</div>
+          <span style={{ fontSize: 17, lineHeight: 1 }}>+</span> Add a child
         </button>
       )}
     </div>

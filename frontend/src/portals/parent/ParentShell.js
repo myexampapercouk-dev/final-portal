@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import DueInvoicesToast from './DueInvoicesToast';
 import { P, initials } from './theme';
 
 const NAV = [
@@ -10,6 +11,8 @@ const NAV = [
   { to: '/parent/one-on-one', label: '1:1 Classes', icon: '\u{1F464}' },
   { to: '/parent/attended', label: 'Classes Attended', icon: '☑' },
   { to: '/parent/mock-exams', label: 'Mock Exams', icon: '\u{1F4C4}' },
+  { to: '/parent/homework', label: 'Homework', icon: '\u{1F4DA}' },
+  { to: '/parent/children', label: 'My Children', icon: '\u{1F46A}' },
   { to: '/parent/invoices', label: 'Invoices', icon: '\u{1F4CB}' }
 ];
 
@@ -77,6 +80,7 @@ export default function ParentShell({ children }) {
 
   return (
     <div style={{ minHeight: '100vh', background: P.canvas, fontFamily: P.bodyFont }}>
+      <DueInvoicesToast />
       <header style={styles.header}>
         {!isDesktop && (
           <button onClick={() => setDrawerOpen(true)} style={styles.hamburger} aria-label="Open menu">

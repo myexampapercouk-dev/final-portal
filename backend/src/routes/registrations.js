@@ -1,7 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
-const { sendFeedbackEmail } = require('../utils/mailer');
+const { notifyAdmin } = require('../utils/notifications');
 
 const router = express.Router();
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
@@ -87,7 +87,7 @@ router.get('/child/:childId/upcoming', requireAuth, requireRole('parent'), async
   const child = await assertChildOwnership(req.params.childId, req.user.id);
   if (!child) return res.status(403).json({ error: 'Not your child' });
   const [rows] = await pool.query(
-    `SELECT cr.*, c.title, c.timing, u.name AS teacher_name
+    `SELECT cr.*, c.title, c.timing, c.end_timing, c.venue, c.price, u.name AS teacher_name
      FROM class_registrations cr
      JOIN classes c ON c.id = cr.class_id
      JOIN users u ON u.id = c.teacher_id
@@ -102,7 +102,7 @@ router.get('/child/:childId/attended', requireAuth, requireRole('parent'), async
   const child = await assertChildOwnership(req.params.childId, req.user.id);
   if (!child) return res.status(403).json({ error: 'Not your child' });
   const [rows] = await pool.query(
-    `SELECT cr.*, c.title, c.timing, u.name AS teacher_name
+    `SELECT cr.*, c.title, c.timing, c.end_timing, c.venue, c.price, u.name AS teacher_name
      FROM class_registrations cr
      JOIN classes c ON c.id = cr.class_id
      JOIN users u ON u.id = c.teacher_id
@@ -229,35 +229,78 @@ router.post('/class/:classId/complete', requireAuth, requireRole('teacher'), asy
 });
 
 // ---------------------------------------------------------------
-// TEACHER: submit + finalise feedback for a class - every present student
-// must already have at least one subject remark. Marks the class completed
-// (same effect as the old "Complete Class" action) and emails each present
-// student's parent their child's feedback for this class.
+// TEACHER: edit one of their remarks. Allowed until admin approves the class
+// feedback (admin can still correct remarks from the approval screen).
+// ---------------------------------------------------------------
+router.put('/feedback/:id', requireAuth, requireRole('teacher'), async (req, res) => {
+  const { content } = req.body;
+  if (!content || !content.trim()) return res.status(400).json({ error: 'content is required' });
+  const [rows] = await pool.query(
+    `SELECT f.id, f.teacher_id, c.feedback_status
+     FROM feedback f
+     JOIN class_registrations cr ON cr.id = f.registration_id
+     JOIN classes c ON c.id = cr.class_id
+     WHERE f.id = ?`,
+    [req.params.id]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Feedback not found' });
+  if (rows[0].teacher_id !== req.user.id) return res.status(403).json({ error: 'Not your feedback' });
+  if (rows[0].feedback_status === 'approved') {
+    return res.status(400).json({ error: 'This feedback has been approved and is live - ask admin to change it' });
+  }
+  await pool.query('UPDATE feedback SET content = ? WHERE id = ?', [content.trim(), req.params.id]);
+  res.json({ success: true });
+});
+
+// ---------------------------------------------------------------
+// PARENT: feedback for their child - only from classes where admin has approved it
+// ---------------------------------------------------------------
+router.get('/child/:childId/feedback', requireAuth, requireRole('parent'), async (req, res) => {
+  const child = await assertChildOwnership(req.params.childId, req.user.id);
+  if (!child) return res.status(403).json({ error: 'Not your child' });
+  const [rows] = await pool.query(
+    `SELECT f.id, f.subject, f.content, f.created_at,
+            c.id AS class_id, c.title AS class_title, c.timing, u.name AS teacher_name
+     FROM feedback f
+     JOIN class_registrations cr ON cr.id = f.registration_id
+     JOIN classes c ON c.id = cr.class_id
+     JOIN users u ON u.id = f.teacher_id
+     WHERE cr.child_id = ? AND c.feedback_status = 'approved'
+     ORDER BY c.timing DESC, f.id ASC`,
+    [req.params.childId]
+  );
+  res.json(rows);
+});
+
+// ---------------------------------------------------------------
+// TEACHER: "Complete class". Every present student needs at least one remark.
+// The class is marked completed and goes to admin for approval - parents are
+// NOT emailed and cannot see the feedback until admin approves it.
 // ---------------------------------------------------------------
 router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher'), async (req, res) => {
   const [cls] = await pool.query('SELECT * FROM classes WHERE id = ? AND teacher_id = ?', [
     req.params.classId, req.user.id
   ]);
   if (!cls.length) return res.status(403).json({ error: 'Not your class' });
+  if (cls[0].feedback_status === 'approved') {
+    return res.status(400).json({ error: 'This class has already been approved' });
+  }
 
   const [present] = await pool.query(
-    `SELECT cr.id AS registration_id, ch.id AS child_id, ch.name AS child_name,
-            u.id AS parent_id, u.name AS parent_name, u.email AS parent_email
+    `SELECT cr.id AS registration_id, ch.name AS child_name
      FROM class_registrations cr
      JOIN children ch ON ch.id = cr.child_id
-     JOIN users u ON u.id = ch.parent_id
      WHERE cr.class_id = ? AND cr.present = 1`,
     [req.params.classId]
   );
   if (!present.length) return res.status(400).json({ error: 'No students marked present' });
 
   const [feedbackRows] = await pool.query(
-    `SELECT f.* FROM feedback f
+    `SELECT f.registration_id FROM feedback f
      JOIN class_registrations cr ON cr.id = f.registration_id
      WHERE cr.class_id = ?`,
     [req.params.classId]
   );
-
   const missing = present.filter((p) => !feedbackRows.some((f) => f.registration_id === p.registration_id));
   if (missing.length) {
     return res.status(400).json({
@@ -266,25 +309,23 @@ router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher
     });
   }
 
-  await pool.query('UPDATE classes SET status = \'completed\' WHERE id = ?', [req.params.classId]);
+  const alreadyPending = cls[0].feedback_status === 'pending';
+  await pool.query(`UPDATE classes SET status = 'completed', feedback_status = 'pending' WHERE id = ?`, [req.params.classId]);
   await pool.query(
     `UPDATE class_registrations SET status = 'attended' WHERE class_id = ? AND status = 'upcoming'`,
     [req.params.classId]
   );
 
-  for (const p of present) {
-    const items = feedbackRows
-      .filter((f) => f.registration_id === p.registration_id)
-      .map((f) => ({ subject: f.subject, content: f.content }));
-    await sendFeedbackEmail(p.parent_email, {
-      parentName: p.parent_name,
-      childName: p.child_name,
-      className: cls[0].title,
-      items
+  if (!alreadyPending) {
+    await notifyAdmin({
+      type: 'feedback_approval',
+      title: `Feedback awaiting approval: ${cls[0].title}`,
+      body: `${req.user.name} completed the class for ${present.length} student${present.length === 1 ? '' : 's'}.`,
+      link: `/admin/approvals/${req.params.classId}`,
+      refId: Number(req.params.classId)
     });
   }
-
-  res.json({ success: true, notified: present.length });
+  res.json({ success: true });
 });
 
 module.exports = router;

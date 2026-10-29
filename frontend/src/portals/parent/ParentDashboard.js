@@ -6,6 +6,7 @@ import ParentShell from './ParentShell';
 import ChildPills from './ChildPills';
 import ScoreRing from './ScoreRing';
 import AddChildModal from './AddChildModal';
+import Scroller, { ScrollCard, StudentTag } from './Scroller';
 import { useParent } from './ParentContext';
 import { P, cardStyle } from './theme';
 import { parsePercent } from './scoreUtils';
@@ -14,12 +15,15 @@ const QUICK_ACTIONS = [
   { to: '/parent/register', icon: '\u{1F4DD}', title: 'Register for Classes', desc: 'Find and book new sessions' },
   { to: '/parent/upcoming', icon: '\u{1F4C5}', title: 'Upcoming Classes', desc: 'View upcoming lessons' },
   { to: '/parent/one-on-one', icon: '\u{1F464}', title: '1:1 Classes', desc: 'Private tuition sessions' },
+  { to: '/parent/homework', icon: '\u{1F4DA}', title: 'Homework', desc: 'View homework and answers' },
   { to: '/parent/mock-exams', icon: '\u{1F4C4}', title: 'Mock Exams', desc: 'Scores, feedback and papers' }
 ];
 
 export default function ParentDashboard() {
   const { user } = useAuth();
-  const { selectedChild, loading: childrenLoading, reload: reloadChildren } = useParent();
+  const { kids, selectedChild, loading: childrenLoading, reload: reloadChildren } = useParent();
+  const [allUpcoming, setAllUpcoming] = useState([]); // every child's upcoming classes, tagged by child
+  const [allFeedback, setAllFeedback] = useState([]); // every child's approved teacher feedback
   const [upcoming, setUpcoming] = useState([]);
   const [oneOnOne, setOneOnOne] = useState([]);
   const [attended, setAttended] = useState([]);
@@ -31,6 +35,20 @@ export default function ParentDashboard() {
   useEffect(() => {
     api.get('/invoices').then(({ data }) => setInvoices(data));
   }, []);
+
+  useEffect(() => {
+    if (!kids.length) { setAllUpcoming([]); setAllFeedback([]); return; }
+    Promise.all(kids.map((k) => Promise.all([
+      api.get(`/registrations/child/${k.id}/upcoming`),
+      api.get(`/registrations/child/${k.id}/feedback`)
+    ]).then(([u, f]) => ({
+      upcoming: u.data.map((r) => ({ ...r, child_name: k.name })),
+      feedback: f.data.map((r) => ({ ...r, child_name: k.name }))
+    })))).then((results) => {
+      setAllUpcoming(results.flatMap((r) => r.upcoming).sort((a, b) => new Date(a.timing) - new Date(b.timing)));
+      setAllFeedback(results.flatMap((r) => r.feedback).sort((a, b) => new Date(b.timing) - new Date(a.timing)).slice(0, 12));
+    });
+  }, [kids]);
 
   useEffect(() => {
     if (!selectedChild) { setLoading(false); return; }
@@ -87,22 +105,66 @@ export default function ParentDashboard() {
       {selectedChild && (
         <>
           <Link to="/parent/invoices" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: P.goldSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+            <div style={{
+              ...cardStyle, display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20,
+              ...(outstanding > 0 ? { background: P.redWash, border: `1.5px solid ${P.red}`, borderLeft: `6px solid ${P.red}` } : {})
+            }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: outstanding > 0 ? P.red : P.goldSoft, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
                 {'\u{1F4CB}'}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, color: P.navy }}>Invoices</div>
                 <div style={{ fontSize: 12.5, color: P.meta }}>View invoices, payments and outstanding balances</div>
                 {outstanding > 0 && (
-                  <span style={{ display: 'inline-block', marginTop: 6, fontSize: 11, fontWeight: 700, color: '#7A5B00', background: P.goldSoft, padding: '3px 10px', borderRadius: 999 }}>
-                    £{outstanding.toFixed(2)} outstanding
+                  <span style={{ display: 'inline-block', marginTop: 6, fontSize: 12, fontWeight: 700, color: '#fff', background: P.red, padding: '4px 12px', borderRadius: 999 }}>
+                    ⚠ £{outstanding.toFixed(2)} due
                   </span>
                 )}
               </div>
               <span style={{ color: P.meta }}>{'›'}</span>
             </div>
           </Link>
+
+          {allUpcoming.length > 0 && (
+            <>
+              <div style={{ fontFamily: P.headlineFont, fontSize: 18, color: P.navy, marginBottom: 8 }}>Upcoming Classes</div>
+              <Scroller>
+                {allUpcoming.map((r) => (
+                  <ScrollCard key={r.id}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: P.gold, textTransform: 'uppercase' }}>
+                      {new Date(r.timing).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </div>
+                    <div style={{ fontWeight: 600, color: P.navy, fontFamily: P.headlineFont, fontSize: 15, margin: '4px 0' }}>{r.title}</div>
+                    <div style={{ fontSize: 12.5, color: P.meta, marginBottom: 8 }}>
+                      {new Date(r.timing).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                      {r.end_timing ? ` – ${new Date(r.end_timing).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : ''}
+                    </div>
+                    <StudentTag name={r.child_name} />
+                  </ScrollCard>
+                ))}
+              </Scroller>
+            </>
+          )}
+
+          {allFeedback.length > 0 && (
+            <>
+              <div style={{ fontFamily: P.headlineFont, fontSize: 18, color: P.navy, marginBottom: 8 }}>Latest Teacher Feedback</div>
+              <Scroller>
+                {allFeedback.map((f) => (
+                  <ScrollCard key={f.id} accent={P.green}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'center' }}>
+                      <StudentTag name={f.child_name} />
+                      {f.subject && <span style={{ fontSize: 10.5, fontWeight: 700, color: P.meta, textTransform: 'uppercase', letterSpacing: '.05em' }}>{f.subject}</span>}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: P.navy, margin: '8px 0', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{f.content}</div>
+                    <div style={{ fontSize: 11.5, color: P.meta }}>
+                      {f.class_title} · {new Date(f.timing).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                    </div>
+                  </ScrollCard>
+                ))}
+              </Scroller>
+            </>
+          )}
 
           <div style={{ fontFamily: P.headlineFont, fontSize: 18, color: P.navy, marginBottom: 12 }}>Quick actions</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12, marginBottom: 24 }}>

@@ -48,6 +48,7 @@ export function AuthProvider({ children }) {
   function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('due_toast_shown');
     setUser(null);
   }
 

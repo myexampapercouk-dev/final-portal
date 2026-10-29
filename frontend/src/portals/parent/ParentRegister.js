@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
@@ -22,27 +22,11 @@ const C = {
   bodyFont: "'Poppins', -apple-system, sans-serif"
 };
 
-// Matches the real category taxonomy (see AddChildModal.js / schema.sql) —
-// a child's category gates which classes they can see, so this can never
-// drift from the actual 6-value list.
-const CATEGORIES = [
-  { value: '7+', note: 'Year 2 target' },
-  { value: '8+', note: 'Year 3 target' },
-  { value: '9+', note: 'Year 4 target' },
-  { value: '10+', note: 'Year 5 target' },
-  { value: '11+', note: 'Year 6 target' },
-  { value: '13+', note: 'Year 8 target' }
-];
-
 export default function ParentRegister() {
   const isMobile = useIsMobile(900);
   const location = useLocation();
   const prefill = location.state || {};
   const [form, setForm] = useState({ name: prefill.name || '', email: prefill.email || '', phone: '', password: prefill.password || '', confirmPassword: '' });
-  const [child, setChild] = useState({
-    name: prefill.child?.name || '', dob: prefill.child?.dob || '',
-    category: prefill.child?.category || '', target_exam: prefill.child?.target_exam || '', allergies: prefill.child?.allergies || ''
-  });
   const [agree, setAgree] = useState(false);
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState('details'); // 'details' | 'verify'
@@ -51,22 +35,30 @@ export default function ParentRegister() {
   const [info, setInfo] = useState('');
   const { user, registerParent } = useAuth();
   const navigate = useNavigate();
+  // Whether the server currently asks for an email verification code
+  const [otpRequired, setOtpRequired] = useState(false);
+  useEffect(() => {
+    api.get('/auth/config').then(({ data }) => setOtpRequired(!!data.otpRequired)).catch(() => {});
+  }, []);
 
   // Already signed in - this page creates a brand new account, so send an
   // already-logged-in user to their own portal instead.
   if (user) return <Navigate to={`/${user.role}`} replace />;
 
   function update(field, value) { setForm((f) => ({ ...f, [field]: value })); }
-  function updateChild(field, value) { setChild((c) => ({ ...c, [field]: value })); }
 
   async function sendOtp(e) {
     e.preventDefault();
     setError('');
     if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return; }
-    if (!child.category) { setError('Select a category for your child'); return; }
     setInfo('');
     setSending(true);
     try {
+      if (!otpRequired) {
+        await registerParent({ name: form.name, email: form.email, phone: form.phone, password: form.password });
+        navigate('/parent');
+        return;
+      }
       const { data } = await api.post('/auth/parent/send-otp', { email: form.email });
       setStep('verify');
       setInfo(
@@ -86,9 +78,6 @@ export default function ParentRegister() {
     setError('');
     try {
       await registerParent({ name: form.name, email: form.email, phone: form.phone, password: form.password, otp });
-      if (child.name && child.dob && child.category) {
-        try { await api.post('/children', child); } catch { /* non-fatal, parent can add it manually */ }
-      }
       navigate('/parent');
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
@@ -154,48 +143,8 @@ export default function ParentRegister() {
                   </div>
                 </Section>
 
-                {/* Part 2: Child profile */}
-                <Section n={2} title="Initial Pupil Profile Setup" desc="Registers your first child — you can add more from the dashboard anytime">
-                  <div style={styles.formGrid}>
-                    <Field label="Child's Full Name" required>
-                      <input required value={child.name} onChange={(e) => updateChild('name', e.target.value)} placeholder="e.g. Arthur Vance" style={styles.input} />
-                    </Field>
-                    <Field label="Date of Birth" required>
-                      <input required type="date" value={child.dob} onChange={(e) => updateChild('dob', e.target.value)} style={styles.input} />
-                    </Field>
-                  </div>
-
-                  <div style={{ marginTop: 16 }}>
-                    <label style={{ ...styles.fieldLabel, marginBottom: 8, display: 'block' }}>
-                      Category <span style={{ color: C.navy }}>*</span>
-                      <span style={{ fontWeight: 500, color: C.meta, marginLeft: 8, fontSize: 11.5 }}>Strictly determines which classes this child can see</span>
-                    </label>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
-                      {CATEGORIES.map((cat) => {
-                        const active = child.category === cat.value;
-                        return (
-                          <label key={cat.value} style={{ ...styles.catCard, border: active ? `2px solid ${C.gold}` : '2px solid transparent', background: active ? C.goldSoft : C.cream }}>
-                            <input type="radio" name="category" value={cat.value} checked={active} onChange={() => updateChild('category', cat.value)} style={{ display: 'none' }} />
-                            <span style={{ fontWeight: 700, fontSize: 14, color: C.navy }}>{cat.value}</span>
-                            <span style={{ fontSize: 10.5, color: C.meta }}>{cat.note}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div style={{ ...styles.formGrid, marginTop: 16 }}>
-                    <Field label="Target Exam (optional)">
-                      <input value={child.target_exam} onChange={(e) => updateChild('target_exam', e.target.value)} placeholder="e.g. Westminster Under 7+" style={styles.input} />
-                    </Field>
-                    <Field label="Allergies / Medical Notes (optional)">
-                      <input value={child.allergies} onChange={(e) => updateChild('allergies', e.target.value)} placeholder="e.g. Nuts, none" style={styles.input} />
-                    </Field>
-                  </div>
-                </Section>
-
-                {/* Part 3: Agreements */}
-                <Section n={3} title="Operational Agreements" desc="Reflects the policies this portal actually enforces">
+                {/* Part 2: Agreements */}
+                <Section n={2} title="Operational Agreements" desc="Reflects the policies this portal actually enforces">
                   <label style={styles.agreement}>
                     <input required type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ marginTop: 2, width: 18, height: 18, accentColor: C.navy }} />
                     <span style={{ fontSize: 12.5, color: C.meta }}>
@@ -208,7 +157,7 @@ export default function ParentRegister() {
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 14 }}>
                   <button type="submit" disabled={sending} style={styles.submitBtn}>
-                    {sending ? 'Sending code...' : 'Send Verification Code'} {'→'}
+                    {otpRequired ? (sending ? 'Sending code...' : 'Send Verification Code') : (sending ? 'Creating account...' : 'Create Account')} {'→'}
                   </button>
                 </div>
               </form>
@@ -247,8 +196,10 @@ export default function ParentRegister() {
             <div style={styles.sideCard}>
               <SideHeader icon="⇄" title="What Happens Next?" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <Step n={1} title="Verify your email" desc="A one-time code confirms your address before your account activates." />
-                <Step n={2} title="Your child is added automatically" desc="Using the details you entered above." />
+                {otpRequired
+                  ? <Step n={1} title="Verify your email" desc="A one-time code confirms your address before your account activates." />
+                  : <Step n={1} title="Account created instantly" desc="You are signed in straight away." />}
+                <Step n={2} title="Add your child" desc="Use the dashboard to add a child profile once you're signed in." />
                 <Step n={3} title="Explore 4 dashboard tabs" desc="Upcoming Classes, Classes Attended, 1:1 Classes & Mock Exams." />
                 <Step n={4} title="View invoice statements" desc="Track offline cash/bank-transfer fee records." />
               </div>

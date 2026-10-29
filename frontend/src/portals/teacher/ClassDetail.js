@@ -29,6 +29,10 @@ export default function ClassDetail() {
   const [activeSubject, setActiveSubject] = useState(SUBJECTS[0]);
   const [feedbackDraft, setFeedbackDraft] = useState({}); // keyed by `${registrationId}:${subject}`
 
+  const [addingChild, setAddingChild] = useState(false);
+  const [newChild, setNewChild] = useState({ name: '', category: '' });
+  const [childMsg, setChildMsg] = useState('');
+  const [editingFb, setEditingFb] = useState(null); // { id, content }
   const [reviewing, setReviewing] = useState(false);
   const [submitMsg, setSubmitMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -57,7 +61,34 @@ export default function ClassDetail() {
       present: !!attendanceDraft[r.child_id]
     }));
     await api.post(`/registrations/class/${id}/attendance`, { attendance });
-    load();
+    await load();
+    setTab('Feedback');
+  }
+
+  async function addChild(e) {
+    e.preventDefault();
+    setChildMsg('');
+    try {
+      await api.post('/children/teacher', newChild);
+      const eligible = (cls.categories || []).includes(newChild.category);
+      setChildMsg(eligible
+        ? 'Student added - admin has been notified to link a parent.'
+        : 'Student added, but this class is not open to the ' + newChild.category + ' category so they will not appear in this register.');
+      setNewChild({ name: '', category: '' });
+      await load();
+    } catch (err) {
+      setChildMsg(err.response?.data?.error || 'Could not add student');
+    }
+  }
+
+  async function saveEditedFeedback() {
+    try {
+      await api.put('/registrations/feedback/' + editingFb.id, { content: editingFb.content });
+      setEditingFb(null);
+      load();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Could not save');
+    }
   }
 
   async function submitFeedback(registrationId, subject, content) {
@@ -110,11 +141,12 @@ export default function ClassDetail() {
   }
 
   async function submitAndNotify() {
+    if (!window.confirm('Complete this class? Admin will review the feedback before parents can see it.')) return;
     setSubmitting(true);
     setSubmitMsg('');
     try {
-      const { data } = await api.post(`/registrations/class/${id}/submit-feedback`);
-      setSubmitMsg(`Feedback submitted — ${data.notified} parent${data.notified === 1 ? '' : 's'} notified by email.`);
+      await api.post(`/registrations/class/${id}/submit-feedback`);
+      setSubmitMsg('Class completed. Sent to admin for approval - parents will be notified once it is approved.');
       await load();
       setTimeout(() => navigate('/teacher'), 1500);
     } catch (err) {
@@ -174,12 +206,34 @@ export default function ClassDetail() {
         <div style={{ paddingBottom: 30 }}>
           <h2 style={{ fontFamily: T.headlineFont, fontSize: 22, color: T.navy }}>{new Date(cls.timing).toDateString()} — {cls.course_name}</h2>
           <p style={{ color: T.meta, marginTop: -4 }}>Tap every child who is in the room</p>
-          <input
-            placeholder="Search name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ ...styles.input, marginTop: 16, marginBottom: 14, maxWidth: 420, display: 'block' }}
-          />
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '16px 0 14px' }}>
+            <input
+              placeholder="Search name..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ ...styles.input, maxWidth: 420, flex: '1 1 220px' }}
+            />
+            <button style={btn('secondary')} onClick={() => { setAddingChild((a) => !a); setChildMsg(''); }}>
+              {addingChild ? 'Close' : '+ Add child'}
+            </button>
+          </div>
+          {addingChild && (
+            <form onSubmit={addChild} style={{ ...styles.card, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div style={{ flex: '1 1 200px' }}>
+                <div style={{ ...styles.label, marginTop: 0 }}>Child name</div>
+                <input required value={newChild.name} onChange={(e) => setNewChild((c) => ({ ...c, name: e.target.value }))} style={styles.input} />
+              </div>
+              <div style={{ flex: '0 1 150px' }}>
+                <div style={{ ...styles.label, marginTop: 0 }}>Category</div>
+                <select required value={newChild.category} onChange={(e) => setNewChild((c) => ({ ...c, category: e.target.value }))} style={styles.input}>
+                  <option value="">Select</option>
+                  {['7+', '8+', '9+', '10+', '11+', '13+'].map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <button type="submit" style={btn('gold')}>Add</button>
+              {childMsg && <div style={{ flexBasis: '100%', fontSize: 12.5, color: childMsg.startsWith('Student added') ? T.green : T.red }}>{childMsg}</div>}
+            </form>
+          )}
           <div style={styles.rosterGrid}>
             {filteredRoster.map((r) => {
               const present = !!attendanceDraft[r.child_id];
@@ -208,7 +262,7 @@ export default function ClassDetail() {
             <span style={{ fontSize: 13.5 }}>
               <strong style={{ color: T.green }}>{presentCount} present</strong> · {absentCount} absent
             </span>
-            <button style={btn('gold')} onClick={saveAttendance}>Save register</button>
+            <button style={btn('gold')} onClick={saveAttendance}>Next {'→'}</button>
           </div>
         </div>
       )}
@@ -364,9 +418,24 @@ export default function ClassDetail() {
                     {feedbackList
                       .filter((f) => f.registration_id === activeReg.registration_id && f.subject === activeSubject)
                       .map((f) => (
-                        <p key={f.id} style={{ fontSize: 13, color: '#334155', background: '#f1f5f9', padding: '8px 10px', borderRadius: 8, marginTop: 10 }}>
-                          {f.content}
-                        </p>
+                        <div key={f.id} style={{ background: '#f1f5f9', padding: '8px 10px', borderRadius: 8, marginTop: 10 }}>
+                          {editingFb && editingFb.id === f.id ? (
+                            <>
+                              <textarea rows={3} value={editingFb.content} onChange={(e) => setEditingFb({ ...editingFb, content: e.target.value })} style={styles.input} />
+                              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                                <button style={btn('gold')} onClick={saveEditedFeedback}>Save</button>
+                                <button style={btn('secondary')} onClick={() => setEditingFb(null)}>Cancel</button>
+                              </div>
+                            </>
+                          ) : (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+                              <span style={{ fontSize: 13, color: '#334155' }}>{f.content}</span>
+                              {cls.feedback_status !== 'approved' && (
+                                <button style={{ ...btn('secondary'), padding: '4px 10px', fontSize: 12, flexShrink: 0 }} onClick={() => setEditingFb({ id: f.id, content: f.content })}>Edit</button>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       ))}
 
                     <div style={{ ...styles.label, marginTop: 14 }}>Remarks</div>
@@ -407,7 +476,17 @@ export default function ClassDetail() {
         <div style={{ paddingBottom: 30 }}>
           <button onClick={() => setReviewing(false)} style={styles.plainLink}>&larr; Back to feedback</button>
           <h2 style={{ fontFamily: T.headlineFont, fontSize: 24, color: T.navy, marginTop: 6 }}>Review Feedback</h2>
-          <p style={{ color: T.meta, marginTop: -4 }}>Check each student's remarks before notifying parents.</p>
+          <p style={{ color: T.meta, marginTop: -4 }}>Check each student's remarks, then complete the class. Admin approves the feedback before parents see it.</p>
+          {cls.feedback_status === 'pending' && (
+            <div style={{ fontSize: 13, padding: '10px 14px', borderRadius: 8, background: T.goldSoft, color: '#7A5B00', marginBottom: 10 }}>
+              This class is awaiting admin approval. You can still edit remarks until it is approved.
+            </div>
+          )}
+          {cls.feedback_status === 'approved' && (
+            <div style={{ fontSize: 13, padding: '10px 14px', borderRadius: 8, background: T.greenWash, color: T.green, marginBottom: 10 }}>
+              Approved by admin - this feedback is live for parents.
+            </div>
+          )}
 
           <div style={styles.reviewGrid}>
             {presentStudents.map((r) => (
@@ -438,8 +517,8 @@ export default function ClassDetail() {
           {submitMsg && (
             <div style={{
               marginTop: 14, fontSize: 13, padding: '10px 14px', borderRadius: 8,
-              background: submitMsg.startsWith('Feedback submitted') ? T.greenWash : T.redWash,
-              color: submitMsg.startsWith('Feedback submitted') ? T.green : T.red
+              background: submitMsg.startsWith('Class completed') ? T.greenWash : T.redWash,
+              color: submitMsg.startsWith('Class completed') ? T.green : T.red
             }}>
               {submitMsg}
             </div>
@@ -447,9 +526,11 @@ export default function ClassDetail() {
 
           <div style={styles.footerBar}>
             <button style={btn('secondary')} onClick={() => setReviewing(false)}>Back to edit</button>
-            <button style={btn('gold')} disabled={submitting} onClick={submitAndNotify}>
-              {submitting ? 'Submitting...' : 'Submit & Notify Parents'}
-            </button>
+            {cls.feedback_status !== 'approved' && (
+              <button style={btn('gold')} disabled={submitting} onClick={submitAndNotify}>
+                {submitting ? 'Completing...' : cls.feedback_status === 'pending' ? 'Re-submit for approval' : 'Complete class'}
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../api/axios';
 import ParentShell from './ParentShell';
 import ChildPills from './ChildPills';
+import ClassDetails from './ClassDetails';
 import { useParent } from './ParentContext';
 import { P, cardStyle, btn, inputStyle, labelStyle } from './theme';
 
@@ -71,9 +72,7 @@ export default function RegisterForClasses() {
               <div>
                 <div style={{ fontWeight: 600, color: P.navy, fontFamily: P.headlineFont, fontSize: 16 }}>{c.title}</div>
                 <div style={{ fontSize: 12.5, color: P.meta, marginTop: 2 }}>{c.course_name}</div>
-                <div style={{ fontSize: 12.5, color: P.meta, marginTop: 6 }}>
-                  {new Date(c.timing).toLocaleString(undefined, { weekday: 'long', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · Teacher: {c.teacher_name}
-                </div>
+                <ClassDetails c={c} />
                 <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {c.categories.map((cat) => (
                     <span key={cat} style={{ fontSize: 11, fontWeight: 700, background: P.goldSoft, color: '#7A5B00', padding: '3px 10px', borderRadius: 999 }}>{cat}</span>

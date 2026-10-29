@@ -24,9 +24,13 @@ export default function ParentInvoices() {
   return (
     <ParentShell>
       <h1 style={{ fontFamily: P.headlineFont, fontSize: 26, color: P.navy, margin: '0 0 4px' }}>Invoices</h1>
-      <p style={{ color: P.meta, marginBottom: 6 }}>
-        {outstanding > 0 ? `£${outstanding.toFixed(2)} outstanding across ${invoices.filter((i) => i.status === 'unpaid').length} invoice(s)` : 'No outstanding balance'}
-      </p>
+      {outstanding > 0 ? (
+        <div style={{ background: P.redWash, border: `1.5px solid ${P.red}`, color: P.red, borderRadius: 12, padding: '12px 16px', fontWeight: 700, marginBottom: 10 }}>
+          ⚠ £{outstanding.toFixed(2)} is due across {invoices.filter((i) => i.status === 'unpaid').length} unpaid invoice(s)
+        </div>
+      ) : (
+        <p style={{ color: P.meta, marginBottom: 6 }}>No outstanding balance</p>
+      )}
       <p style={{ fontSize: 12.5, color: P.meta, marginBottom: 20 }}>
         This is a record of amounts due — payments are collected in cash or by bank transfer directly, not through this portal.
       </p>
@@ -37,11 +41,11 @@ export default function ParentInvoices() {
         {invoices.map((inv) => {
           const status = STATUS[inv.status] || STATUS.unpaid;
           return (
-            <div key={inv.id} style={cardStyle}>
+            <div key={inv.id} style={inv.status === 'unpaid' ? { ...cardStyle, border: `1.5px solid ${P.red}`, borderLeft: `6px solid ${P.red}`, background: P.redWash } : cardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                 <div>
                   <div style={{ fontSize: 11.5, color: P.meta }}>Invoice #INV-{String(inv.id).padStart(5, '0')}</div>
-                  <div style={{ fontWeight: 600, color: P.navy, fontFamily: P.headlineFont, fontSize: 16, marginTop: 2 }}>£{inv.total_amount}</div>
+                  <div style={{ fontWeight: 600, color: P.navy, fontFamily: P.headlineFont, fontSize: 16, marginTop: 2, ...(inv.status === 'unpaid' ? { color: P.red } : {}) }}>£{inv.total_amount}</div>
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 11px', borderRadius: 999, height: 'fit-content', background: status.bg, color: status.fg }}>{status.label}</span>
               </div>
