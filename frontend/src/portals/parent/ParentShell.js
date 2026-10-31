@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import DueInvoicesToast from './DueInvoicesToast';
 import ParentNotifications from './ParentNotifications';
+import { ParentNotificationsProvider, useParentNotifications } from './NotificationsContext';
 import { P, initials } from './theme';
 
 const NAV = [
@@ -27,14 +28,22 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-export default function ParentShell({ children }) {
+export default function ParentShell(props) {
+  return <ParentNotificationsProvider><ParentShellInner {...props} /></ParentNotificationsProvider>;
+}
+
+function ParentShellInner({ children }) {
   const { user, logout } = useAuth();
+  const { items: notifications } = useParentNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const isDesktop = useIsDesktop();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
+
+  // Open notifications that point at a sidebar page (new invoice, new homework)
+  const pending = (to) => notifications.filter((x) => x.link === to && ['parent_invoice', 'parent_homework'].includes(x.type)).length;
 
   const sidebarContent = (
     <>
@@ -63,7 +72,8 @@ export default function ParentShell({ children }) {
               }}
             >
               <span style={{ width: 18, textAlign: 'center' }}>{n.icon}</span>
-              {n.label}
+              <span style={{ flex: 1 }}>{n.label}</span>
+              {pending(n.to) > 0 && <span style={styles.navBadge}>{pending(n.to)}</span>}
             </Link>
           );
         })}
@@ -128,6 +138,10 @@ const styles = {
   brandMark: {
     width: 32, height: 32, borderRadius: 8, background: P.navy, color: P.gold,
     display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontFamily: P.headlineFont, flexShrink: 0
+  },
+  navBadge: {
+    minWidth: 20, height: 20, borderRadius: 10, background: '#fff', color: P.red, fontSize: 11, fontWeight: 700,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px', boxShadow: '0 0 0 2px ' + P.red
   },
   avatarSm: {
     width: 30, height: 30, borderRadius: '50%', background: P.gold, color: P.navy,

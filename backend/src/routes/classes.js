@@ -1,7 +1,9 @@
 const express = require('express');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
-const uploadMaterials = require('../middleware/upload');
+const uploadMaterials = require('../middleware/uploadClass');
+const { keepCopy } = require('../utils/homeworkFiles');
+const { keepMaterialCopy } = require('../utils/materialFiles');
 
 const router = express.Router();
 
@@ -41,7 +43,9 @@ async function attachExtras(classes) {
 // categories (repeat the field for each selected category),
 // materials (up to 4 files, optional)
 // ---------------------------------------------------------------
-router.post('/', requireAuth, requireRole('admin'), uploadMaterials, async (req, res) => {
+router.post('/', requireAuth, requireRole('admin'), (req, res, next) => {
+  uploadMaterials(req, res, (err) => (err ? res.status(400).json({ error: err.message }) : next()));
+}, async (req, res) => {
   const conn = await pool.getConnection();
   try {
     const { course_id, title, teacher_id, timing, end_timing, venue, price } = req.body;
@@ -54,6 +58,10 @@ router.post('/', requireAuth, requireRole('admin'), uploadMaterials, async (req,
       });
     }
 
+    const hwFile = req.files?.homework?.[0];
+    const answerFile = req.files?.answer?.[0];
+    if (!hwFile) return res.status(400).json({ error: 'The homework PDF is required when adding a class' });
+
     await conn.beginTransaction();
     const [result] = await conn.query(
       `INSERT INTO classes (course_id, teacher_id, title, timing, end_timing, venue, price) VALUES (?,?,?,?,?,?,?)`,
@@ -65,14 +73,24 @@ router.post('/', requireAuth, requireRole('admin'), uploadMaterials, async (req,
       await conn.query('INSERT INTO class_categories (class_id, category) VALUES (?,?)', [classId, cat]);
     }
 
-    for (const file of req.files || []) {
+    for (const file of req.files?.materials || []) {
       await conn.query(
         'INSERT INTO class_materials (class_id, file_name, file_path) VALUES (?,?,?)',
         [classId, file.originalname, `/uploads/materials/${file.filename}`]
       );
     }
 
+    const [hw] = await conn.query(
+      `INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path)
+       VALUES (?,?,?,?,?,?)`,
+      [classId, (req.body.homework_title || '').trim() || `${title} homework`, hwFile.originalname, hwFile.filename,
+       answerFile ? answerFile.originalname : null, answerFile ? answerFile.filename : null]
+    );
+
     await conn.commit();
+    // Database backup copy of the PDFs, after the response is on its way
+    setImmediate(() => (req.files?.materials || []).forEach((f) => keepMaterialCopy(f)));
+    setImmediate(() => keepCopy(hw.insertId, 'homework', hwFile).then(() => (answerFile ? keepCopy(hw.insertId, 'answer', answerFile) : null)));
     const [row] = await pool.query('SELECT * FROM classes WHERE id = ?', [classId]);
     const withExtras = await attachExtras(row);
     res.status(201).json(withExtras[0]);
@@ -168,9 +186,11 @@ router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
 });
 
 // ADMIN: add more material files to an existing class (still capped at 4 total)
-router.post('/:id/materials', requireAuth, requireRole('admin'), uploadMaterials, async (req, res) => {
+router.post('/:id/materials', requireAuth, requireRole('admin'), (req, res, next) => {
+  uploadMaterials(req, res, (err) => (err ? res.status(400).json({ error: err.message }) : next()));
+}, async (req, res) => {
   const [existingFiles] = await pool.query('SELECT id FROM class_materials WHERE class_id = ?', [req.params.id]);
-  const incoming = req.files || [];
+  const incoming = req.files?.materials || [];
   if (existingFiles.length + incoming.length > 4) {
     return res.status(400).json({ error: 'A class can have at most 4 material files' });
   }
@@ -179,6 +199,7 @@ router.post('/:id/materials', requireAuth, requireRole('admin'), uploadMaterials
       'INSERT INTO class_materials (class_id, file_name, file_path) VALUES (?,?,?)',
       [req.params.id, file.originalname, `/uploads/materials/${file.filename}`]
     );
+    keepMaterialCopy(file);
   }
   const [row] = await pool.query('SELECT * FROM classes WHERE id = ?', [req.params.id]);
   res.json((await attachExtras(row))[0]);

@@ -117,11 +117,12 @@ export default function PdfViewer() {
 
   return (
     <div style={{ minHeight: '100vh', overflowX: 'hidden', background: P.canvas, fontFamily: P.bodyFont, userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
+      {hidden && <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 999 }} />}
       <style>{'@media print { body { display: none !important; } }'}</style>
       <div style={{ background: P.navy, color: '#fff', padding: '12px 18px', fontFamily: P.headlineFont, fontWeight: 700 }}>
         {kind === 'answer' ? 'Answers' : 'Homework'} <span style={{ fontFamily: P.bodyFont, fontWeight: 400, fontSize: 12, color: '#C7CEDB' }}>· view only</span>
       </div>
-      <div style={{ padding: '18px 12px 40px', filter: hidden ? 'blur(24px)' : 'none', opacity: hidden ? 0.15 : 1, transition: 'filter .05s' }}>
+      <div style={{ padding: '18px 12px 40px', visibility: hidden ? 'hidden' : 'visible' }}>
         {status === 'loading' && <p style={{ textAlign: 'center', color: P.meta }}>Loading document...</p>}
         {status === 'error' && <p style={{ textAlign: 'center', color: P.red }}>This document could not be opened.</p>}
         <div ref={containerRef} />

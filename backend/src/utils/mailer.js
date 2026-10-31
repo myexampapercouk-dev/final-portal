@@ -171,4 +171,36 @@ async function sendFeedbackReadyEmail(toEmail, { parentName, childName, classNam
     }
 }
 
-module.exports = { sendOtpEmail, sendPasswordResetEmail, sendParentCreatedEmail, sendChildLinkedEmail, sendClassCompletedEmail, sendFeedbackReadyEmail, smtpConfigured };
+// Tells admin a teacher has completed a class and the feedback needs approving.
+// reminder = 0 for the first email, 1+ for the follow-ups.
+async function sendFeedbackApprovalEmail(toEmail, { adminName, className, teacherName, classId, reminder = 0 }) {
+    const portalUrl = process.env.PORTAL_URL || 'https://portal.myexampapers.co.uk';
+    const link = `${portalUrl}/admin/approvals/${classId}`;
+    const subject = reminder
+        ? `Reminder: feedback for ${className} is still waiting for approval`
+        : `Feedback for ${className} is waiting for your approval`;
+    const lead = reminder
+        ? `This is reminder ${reminder}: the feedback for ${className} (completed by ${teacherName || 'the teacher'}) has still not been approved.`
+        : `${teacherName || 'A teacher'} has completed ${className}. The feedback is waiting for your approval before parents can see it.`;
+
+    if (!transporter) {
+        console.log(`[DEV - no SMTP configured] Feedback-approval email${reminder ? ` (reminder ${reminder})` : ''} for ${toEmail} (${className}) -> ${link}`);
+        return { delivered: false };
+    }
+
+    try {
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
+            to: toEmail,
+            subject,
+            text: `Hi ${adminName || 'Admin'},\n\n${lead}\n\nReview and approve it: ${link}`,
+            html: `<p>Hi ${escapeHtml(adminName || 'Admin')},</p><p>${escapeHtml(lead)}</p><p><a href="${link}" style="display:inline-block;background:#C9A227;color:#16243D;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none">Review feedback</a></p>`
+        });
+        return { delivered: true };
+    } catch (err) {
+        console.error('[FEEDBACK APPROVAL EMAIL FAILED]', err.code || '', err.message);
+        return { delivered: false };
+    }
+}
+
+module.exports = { sendFeedbackApprovalEmail, sendOtpEmail, sendPasswordResetEmail, sendParentCreatedEmail, sendChildLinkedEmail, sendClassCompletedEmail, sendFeedbackReadyEmail, smtpConfigured };

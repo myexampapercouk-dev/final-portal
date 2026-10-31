@@ -14,6 +14,9 @@ export default function CoursesAndClasses() {
   const [courseForm, setCourseForm] = useState({ name: '', description: '' });
   const [classForm, setClassForm] = useState(EMPTY_CLASS_FORM);
   const [materialFiles, setMaterialFiles] = useState([null, null, null, null]); // up to 4, optional
+  const [homeworkFile, setHomeworkFile] = useState(null); // required
+  const [answerFile, setAnswerFile] = useState(null); // optional
+  const [fileKey, setFileKey] = useState(0); // remounts the file inputs after a save
   const [error, setError] = useState('');
   const [expandedCourseId, setExpandedCourseId] = useState(null);
 
@@ -55,6 +58,7 @@ export default function CoursesAndClasses() {
   async function addClass(e) {
     e.preventDefault();
     setError('');
+    if (!homeworkFile) { setError('Please attach the homework PDF for this class'); return; }
     try {
       const fd = new FormData();
       fd.append('course_id', classForm.course_id);
@@ -66,10 +70,15 @@ export default function CoursesAndClasses() {
       fd.append('price', classForm.price);
       classForm.categories.forEach((cat) => fd.append('categories', cat));
       materialFiles.filter(Boolean).forEach((file) => fd.append('materials', file));
+      fd.append('homework', homeworkFile);
+      if (answerFile) fd.append('answer', answerFile);
 
       await api.post('/classes', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       setClassForm(EMPTY_CLASS_FORM);
       setMaterialFiles([null, null, null, null]);
+      setHomeworkFile(null);
+      setAnswerFile(null);
+      setFileKey((k) => k + 1);
       loadAll();
     } catch (err) {
       setError(err.response?.data?.error || 'Could not create class');
@@ -179,17 +188,23 @@ export default function CoursesAndClasses() {
           ))}
         </div>
 
+        <label style={labelStyle}>Homework PDF (required)</label>
+        <input key={'hw' + fileKey} required type="file" accept="application/pdf" style={{ marginTop: 6, display: 'block' }} onChange={(e) => setHomeworkFile(e.target.files[0] || null)} />
+        <label style={labelStyle}>Answers PDF (optional)</label>
+        <input key={'ans' + fileKey} type="file" accept="application/pdf" style={{ marginTop: 6, display: 'block' }} onChange={(e) => setAnswerFile(e.target.files[0] || null)} />
+        <p style={{ fontSize: 12, color: A.meta, marginTop: 4 }}>Parents see the homework (view only) for every class their child is booked into.</p>
+
         <label style={labelStyle}>Material Files (optional, up to 4)</label>
         {[0, 1, 2, 3].map((i) => (
           <input
-            key={i}
+            key={`${i}-${fileKey}`}
             type="file"
             style={{ marginTop: 6, display: 'block' }}
             onChange={(e) => setMaterialFile(i, e.target.files[0] || null)}
           />
         ))}
         <p style={{ fontSize: 12, color: A.meta, marginTop: 4 }}>
-          None of these are required — leave any or all blank and add them later if needed.
+          Materials are optional — leave them blank and add them later if needed.
         </p>
 
         {error && <div style={{ color: A.red, fontSize: 12.5, background: A.redWash, padding: '8px 12px', borderRadius: 8, marginTop: 8 }}>{error}</div>}

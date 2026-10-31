@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { A } from './theme';
 
-// Bell with an open-count badge. Each item can be ticked (done) or crossed
-// (no longer needed); clicking the item itself goes to where the action is.
+// Bell with an open-count badge. Clicking an item goes to where the action is;
+// the tick marks it done and removes it.
 // New items that arrive while the admin is online also pop up as a toast.
 export default function AdminNotifications() {
   const navigate = useNavigate();
@@ -82,9 +82,6 @@ export default function AdminNotifications() {
                 </div>
                 <button title="Done" aria-label="Mark done" onClick={() => resolve(n, 'done')} style={{ ...styles.round, color: A.green, borderColor: A.green }}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" /></svg>
-                </button>
-                <button title="No longer needed" aria-label="Dismiss" onClick={() => resolve(n, 'dismiss')} style={{ ...styles.round, color: A.red, borderColor: A.red }}>
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" /></svg>
                 </button>
               </div>
             ))}

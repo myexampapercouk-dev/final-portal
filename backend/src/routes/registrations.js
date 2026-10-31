@@ -3,6 +3,7 @@ const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { notifyAdmin, notifyUser } = require('../utils/notifications');
 const { sendClassCompletedEmail } = require('../utils/mailer');
+const { startApprovalClock } = require('../utils/feedbackReminders');
 
 const router = express.Router();
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
@@ -333,6 +334,13 @@ router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher
       link: `/admin/approvals/${req.params.classId}`,
       refId: Number(req.params.classId)
     });
+    // Email admin too, and start the 8h / 24h / daily reminders until it is approved
+    try {
+      const [t] = await pool.query('SELECT name FROM users WHERE id = ?', [req.user.id]);
+      await startApprovalClock({ id: Number(req.params.classId), title: cls[0].title, teacher_name: t.length ? t[0].name : req.user.name });
+    } catch (e) {
+      console.error('[APPROVAL EMAIL FAILED]', e.message);
+    }
   }
 
   // Tell each present child's parent straight away that the class is completed.

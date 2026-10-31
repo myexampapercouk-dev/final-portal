@@ -190,7 +190,7 @@ router.post('/classes/:id/approve-feedback', async (req, res) => {
 
   await pool.query(`UPDATE classes SET feedback_status = 'approved' WHERE id = ?`, [req.params.id]);
   await pool.query(
-    `UPDATE notifications SET status = 'done' WHERE type = 'feedback_approval' AND ref_id = ? AND status = 'open'`,
+    `UPDATE notifications SET status = 'done' WHERE type IN ('feedback_approval','feedback_reminder') AND ref_id = ? AND status = 'open'`,
     [req.params.id]
   );
 

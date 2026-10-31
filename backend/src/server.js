@@ -13,8 +13,10 @@ const mockExamsRoutes = require('./routes/mockExams');
 const invoicesRoutes = require('./routes/invoices');
 const adminRoutes = require('./routes/admin');
 const homeworkRoutes = require('./routes/homework');
+const { restoreMissingMaterial } = require('./utils/materialFiles');
 const notificationsRoutes = require('./routes/notifications');
 const { ensureNotificationSchema } = require('./utils/notifications');
+const { startFeedbackReminderJob } = require('./utils/feedbackReminders');
 const { startCategoryUpgradeJob } = require('./utils/categoryUpgrade');
 
 // Express 4 does not catch errors thrown inside async route handlers. Without
@@ -28,6 +30,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve uploaded class-material files (e.g. /uploads/materials/xxx.pdf)
+app.use('/uploads/materials', restoreMissingMaterial);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
@@ -50,9 +53,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Unexpected server error' });
 });
 
+// The sample-data SQL points its class materials at this file; put it in place if missing
+function ensureSampleMaterial() {
+  try {
+    const dest = path.join(__dirname, '../uploads/materials/sample-material.pdf');
+    const src = path.join(__dirname, '../seed/sample-material.pdf');
+    if (!require('fs').existsSync(dest) && require('fs').existsSync(src)) {
+      require('fs').mkdirSync(path.dirname(dest), { recursive: true });
+      require('fs').copyFileSync(src, dest);
+    }
+  } catch (e) {
+    console.error('[SAMPLE MATERIAL]', e.message);
+  }
+}
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Edu Portal API running on port ${PORT}`);
   ensureNotificationSchema();
+  ensureSampleMaterial();
   startCategoryUpgradeJob();
+  startFeedbackReminderJob();
 });
