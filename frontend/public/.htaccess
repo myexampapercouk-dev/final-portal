@@ -11,3 +11,14 @@
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^ index.html [L]
 </IfModule>
+
+# Always re-check the main page so a new deployment shows up straight away.
+# Without this, browsers keep an old copy of index.html, which still points at
+# the previous JavaScript file, so users keep seeing the old version after a
+# redeploy. The JS/CSS files have a fingerprint in their name, so they can
+# safely stay cached.
+<IfModule mod_headers.c>
+  <FilesMatch "^index\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>
