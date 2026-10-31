@@ -3,12 +3,15 @@ import api from '../../api/axios';
 import AdminShell from './AdminShell';
 import { A, cardStyle, btn, badge, thStyle, tdStyle } from './theme';
 
+const hasPrice = (c) => c.price !== null && c.price !== undefined && c.price !== '';
+const money = (n) => `£${Number(n || 0).toFixed(2)}`;
+
 export default function AdminInvoices() {
   const [parents, setParents] = useState([]);
   const [selectedParent, setSelectedParent] = useState(null);
   const [attendedClasses, setAttendedClasses] = useState([]);
-  const [amounts, setAmounts] = useState({});
   const [selectedIds, setSelectedIds] = useState({});
+  const [edited, setEdited] = useState({}); // amounts the admin changed, by registration id
   const [invoices, setInvoices] = useState([]);
   const [error, setError] = useState('');
 
@@ -28,30 +31,34 @@ export default function AdminInvoices() {
     ]);
     setAttendedClasses(classesRes.data);
     setInvoices(invoicesRes.data);
-    setAmounts({});
     setSelectedIds({});
+    setEdited({});
   }
 
   function toggleSelect(regId) {
     setSelectedIds((s) => ({ ...s, [regId]: !s[regId] }));
   }
 
+  // The amount box starts at the class price; typing in it overrides that for this invoice only.
+  const amountOf = (c) => (edited[c.registration_id] !== undefined ? edited[c.registration_id] : hasPrice(c) ? String(c.price) : '');
+  const chosen = attendedClasses.filter((c) => selectedIds[c.registration_id]);
+  const chosenTotal = chosen.reduce((sum, c) => sum + Number(amountOf(c) || 0), 0);
+  const chosenUnpriced = chosen.filter((c) => !hasPrice(c) && !Number(amountOf(c))).length;
+
   async function generateInvoice() {
     setError('');
-    const items = attendedClasses
-      .filter((c) => selectedIds[c.registration_id])
-      .map((c) => ({
-        child_id: c.child_id,
-        class_id: c.class_id,
-        description: `${c.title} (${c.course_name})`,
-        amount: Number(amounts[c.registration_id] || 0)
-      }));
+    const items = chosen.map((c) => ({
+      child_id: c.child_id,
+      class_id: c.class_id,
+      description: `${c.title} (${c.course_name})`,
+      amount: Number(amountOf(c) || 0)
+    }));
     if (!items.length) { setError('Select at least one class'); return; }
     try {
       await api.post(`/invoices/parents/${selectedParent.id}/generate`, { items });
       selectParent(selectedParent);
       setSelectedIds({});
-      setAmounts({});
+      setEdited({});
     } catch (err) {
       setError(err.response?.data?.error || 'Could not generate invoice');
     }
@@ -91,7 +98,7 @@ export default function AdminInvoices() {
                   <table style={{ width: '100%', minWidth: 460, borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: A.navy, color: '#fff' }}>
-                        <th style={thStyle}></th><th style={thStyle}>Child</th><th style={thStyle}>Class</th><th style={thStyle}>Date</th><th style={thStyle}>Amount (₹)</th>
+                        <th style={thStyle}></th><th style={thStyle}>Child</th><th style={thStyle}>Class</th><th style={thStyle}>Date</th><th style={thStyle}>Amount (£)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -104,15 +111,32 @@ export default function AdminInvoices() {
                           <td style={tdStyle}>
                             <input
                               type="number"
-                              style={{ width: 90, padding: '6px 8px', borderRadius: 6, border: `1px solid ${A.line}` }}
-                              value={amounts[c.registration_id] || ''}
-                              onChange={(e) => setAmounts((a) => ({ ...a, [c.registration_id]: e.target.value }))}
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              style={{ width: 96, padding: '6px 8px', borderRadius: 6, border: `1px solid ${A.line}` }}
+                              value={amountOf(c)}
+                              onChange={(e) => setEdited((x) => ({ ...x, [c.registration_id]: e.target.value }))}
                             />
+                            <div style={{ fontSize: 11, marginTop: 3, color: hasPrice(c) ? A.meta : A.red }}>
+                              {hasPrice(c) ? `Class price ${money(c.price)}` : 'No class price set'}
+                            </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {chosen.length > 0 && (
+                <div style={{ fontSize: 13.5, color: A.navy, marginBottom: 10 }}>
+                  <strong>{chosen.length}</strong> class{chosen.length === 1 ? '' : 'es'} selected · invoice total <strong>{money(chosenTotal)}</strong>
+                  {chosenUnpriced > 0 && (
+                    <div style={{ color: A.red, fontSize: 12.5, marginTop: 4 }}>
+                      {chosenUnpriced} selected class{chosenUnpriced === 1 ? ' has' : 'es have'} no price and no amount entered, so will be billed £0.00.
+                    </div>
+                  )}
                 </div>
               )}
               {error && <div style={{ color: A.red, fontSize: 12.5, background: A.redWash, padding: '8px 12px', borderRadius: 8, marginBottom: 10 }}>{error}</div>}
@@ -122,7 +146,7 @@ export default function AdminInvoices() {
               {invoices.map((inv) => (
                 <div key={inv.id} style={{ ...cardStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
                   <div style={{ color: A.navy }}>
-                    Invoice #{inv.id} · ₹{inv.total_amount} · {new Date(inv.generated_at).toLocaleDateString()}
+                    Invoice #{inv.id} · {money(inv.total_amount)} · {new Date(inv.generated_at).toLocaleDateString()}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={badge(inv.status === 'paid' ? A.greenWash : A.goldSoft, inv.status === 'paid' ? A.green : '#7A5B00')}>{inv.status}</span>

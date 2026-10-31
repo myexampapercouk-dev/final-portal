@@ -16,7 +16,7 @@ router.get('/parents', requireAuth, requireRole('admin'), async (req, res) => {
 router.get('/parents/:parentId/attended-classes', requireAuth, requireRole('admin'), async (req, res) => {
   const [rows] = await pool.query(
     `SELECT cr.id AS registration_id, ch.id AS child_id, ch.name AS child_name,
-            c.id AS class_id, c.title, c.timing, co.name AS course_name
+            c.id AS class_id, c.title, c.timing, c.price, co.name AS course_name
      FROM class_registrations cr
      JOIN children ch ON ch.id = cr.child_id
      JOIN classes c ON c.id = cr.class_id
@@ -30,7 +30,9 @@ router.get('/parents/:parentId/attended-classes', requireAuth, requireRole('admi
 
 // ---------------------------------------------------------------
 // ADMIN: generate ONE consolidated invoice per parent
-// body: { items: [{ child_id, class_id, description, amount }, ...] }
+// body: { items: [{ child_id, class_id, description, amount? }, ...] }
+// Each line defaults to the class's own price. The admin may override it by sending
+// an amount; a missing or invalid amount falls back to the class price.
 // (No payment gateway - this is a record/notification only, cash payment)
 // ---------------------------------------------------------------
 router.post('/parents/:parentId/generate', requireAuth, requireRole('admin'), async (req, res) => {
@@ -39,7 +41,15 @@ router.post('/parents/:parentId/generate', requireAuth, requireRole('admin'), as
     const { items } = req.body;
     if (!items || !items.length) return res.status(400).json({ error: 'At least one item is required' });
 
-    const total = items.reduce((sum, i) => sum + Number(i.amount || 0), 0);
+    const classIds = [...new Set(items.map((i) => i.class_id))];
+    const [priceRows] = await pool.query(
+      `SELECT id, price FROM classes WHERE id IN (${classIds.map(() => '?').join(',')})`,
+      classIds
+    );
+    const priceOf = (classId) => Number((priceRows.find((p) => p.id === Number(classId)) || {}).price || 0);
+    const validAmount = (v) => v !== undefined && v !== null && v !== '' && Number.isFinite(Number(v)) && Number(v) >= 0;
+    const priced = items.map((i) => ({ ...i, amount: validAmount(i.amount) ? Number(i.amount) : priceOf(i.class_id) }));
+    const total = priced.reduce((sum, i) => sum + i.amount, 0);
 
     await conn.beginTransaction();
     const [result] = await conn.query(
@@ -47,7 +57,7 @@ router.post('/parents/:parentId/generate', requireAuth, requireRole('admin'), as
       [req.params.parentId, total]
     );
     const invoiceId = result.insertId;
-    for (const item of items) {
+    for (const item of priced) {
       await conn.query(
         `INSERT INTO invoice_items (invoice_id, child_id, class_id, description, amount)
          VALUES (?,?,?,?,?)`,
