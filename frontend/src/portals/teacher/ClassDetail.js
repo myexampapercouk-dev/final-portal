@@ -15,7 +15,6 @@ export default function ClassDetail() {
   const [attendanceDraft, setAttendanceDraft] = useState({}); // keyed by child_id
   const [tab, setTab] = useState('Register');
   const [search, setSearch] = useState('');
-  const [feedbackSearch, setFeedbackSearch] = useState('');
   const [feedbackList, setFeedbackList] = useState([]);
 
   // Bulk feedback: multi-select students + multi-select subjects + one shared remark
@@ -177,9 +176,6 @@ export default function ClassDetail() {
   const presentStudents = registrations.filter((r) => attendanceDraft[r.child_id] && r.registration_id);
   const filteredRoster = registrations.filter((r) =>
     r.child_name.toLowerCase().includes(search.toLowerCase())
-  );
-  const feedbackStudents = presentStudents.filter((r) =>
-    r.child_name.toLowerCase().includes(feedbackSearch.toLowerCase())
   );
   const presentCount = registrations.filter((r) => attendanceDraft[r.child_id]).length;
   const absentCount = registrations.length - presentCount;
@@ -375,44 +371,7 @@ export default function ClassDetail() {
                 </div>
               </div>
 
-              <input
-                placeholder="Search student..."
-                value={feedbackSearch}
-                onChange={(e) => setFeedbackSearch(e.target.value)}
-                style={{ ...styles.input, marginTop: 4, marginBottom: 4, maxWidth: 420, display: 'block' }}
-              />
-              <div style={styles.feedbackGrid}>
-                <div style={{ ...styles.card, margin: 0, padding: '14px 12px' }}>
-                  <div style={{ ...styles.label, marginTop: 0, paddingLeft: 8 }}>Students · click to edit individually</div>
-                  {feedbackStudents.map((r) => {
-                    const done = subjectsCompleted(r);
-                    const isActive = activeReg && r.registration_id === activeReg.registration_id;
-                    return (
-                      <div
-                        key={r.registration_id}
-                        onClick={() => setActiveStudent(r.registration_id)}
-                        style={{
-                          ...styles.studentRow,
-                          background: isActive ? T.navy : '#fff',
-                          color: isActive ? '#fff' : T.navy,
-                          borderLeft: isActive ? `4px solid ${T.gold}` : '4px solid transparent'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <strong>{r.child_name}</strong>
-                            <div style={{ fontSize: 12, color: isActive ? '#C7CEDB' : T.meta }}>{r.category}</div>
-                          </div>
-                          <span style={{ ...styles.dot, background: done > 0 ? T.gold : '#c7ccd6' }} />
-                        </div>
-                        <div style={{ fontSize: 12, marginTop: 4, color: isActive ? T.goldSoft : done > 0 ? T.gold : '#94a3b8', fontWeight: 600 }}>
-                          {done > 0 ? `${done} subject${done > 1 ? 's' : ''} completed` : 'Not started (required)'}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
+              <div style={{ marginTop: 12 }}>
                 {activeReg && (
                   <div style={{ ...styles.card, margin: 0 }}>
                     <h3 style={{ fontFamily: T.headlineFont, color: T.navy, marginBottom: 2 }}>{activeReg.child_name}</h3>
