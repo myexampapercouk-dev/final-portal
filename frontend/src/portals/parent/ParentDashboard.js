@@ -8,7 +8,7 @@ import ScoreRing from './ScoreRing';
 import AddChildModal from './AddChildModal';
 import Scroller, { ScrollCard, StudentTag } from './Scroller';
 import { useParent } from './ParentContext';
-import { P, cardStyle } from './theme';
+import { P, cardStyle, btn } from './theme';
 import { parsePercent } from './scoreUtils';
 
 const QUICK_ACTIONS = [
@@ -24,6 +24,7 @@ export default function ParentDashboard() {
   const { kids, selectedChild, loading: childrenLoading, reload: reloadChildren } = useParent();
   const [allUpcoming, setAllUpcoming] = useState([]); // every child's upcoming classes, tagged by child
   const [allFeedback, setAllFeedback] = useState([]); // every child's approved teacher feedback
+  const [allHomework, setAllHomework] = useState([]); // every child's homework, newest first
   const [upcoming, setUpcoming] = useState([]);
   const [oneOnOne, setOneOnOne] = useState([]);
   const [attended, setAttended] = useState([]);
@@ -37,16 +38,19 @@ export default function ParentDashboard() {
   }, []);
 
   useEffect(() => {
-    if (!kids.length) { setAllUpcoming([]); setAllFeedback([]); return; }
+    if (!kids.length) { setAllUpcoming([]); setAllFeedback([]); setAllHomework([]); return; }
     Promise.all(kids.map((k) => Promise.all([
       api.get(`/registrations/child/${k.id}/upcoming`),
-      api.get(`/registrations/child/${k.id}/feedback`)
-    ]).then(([u, f]) => ({
+      api.get(`/registrations/child/${k.id}/feedback`),
+      api.get('/homework', { params: { child_id: k.id } }).catch(() => ({ data: [] }))
+    ]).then(([u, f, h]) => ({
       upcoming: u.data.map((r) => ({ ...r, child_name: k.name })),
-      feedback: f.data.map((r) => ({ ...r, child_name: k.name }))
+      feedback: f.data.map((r) => ({ ...r, child_name: k.name })),
+      homework: h.data.map((r) => ({ ...r, child_name: k.name }))
     })))).then((results) => {
       setAllUpcoming(results.flatMap((r) => r.upcoming).sort((a, b) => new Date(a.timing) - new Date(b.timing)));
       setAllFeedback(results.flatMap((r) => r.feedback).sort((a, b) => new Date(b.timing) - new Date(a.timing)).slice(0, 12));
+      setAllHomework(results.flatMap((r) => r.homework).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 12));
     });
   }, [kids]);
 
@@ -159,6 +163,30 @@ export default function ParentDashboard() {
                     <div style={{ fontSize: 12.5, color: P.navy, margin: '8px 0', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{f.content}</div>
                     <div style={{ fontSize: 11.5, color: P.meta }}>
                       {f.class_title} · {new Date(f.timing).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                    </div>
+                  </ScrollCard>
+                ))}
+              </Scroller>
+            </>
+          )}
+
+          {allHomework.length > 0 && (
+            <>
+              <div style={{ fontFamily: P.headlineFont, fontSize: 18, color: P.navy, marginBottom: 8 }}>Latest Homework</div>
+              <Scroller>
+                {allHomework.map((h) => (
+                  <ScrollCard key={`${h.id}-${h.child_name}`} accent={P.navy}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: P.gold, textTransform: 'uppercase' }}>
+                      Set {new Date(h.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                    </div>
+                    <div style={{ fontWeight: 600, color: P.navy, fontFamily: P.headlineFont, fontSize: 15, margin: '4px 0' }}>{h.title}</div>
+                    <div style={{ fontSize: 12.5, color: P.meta, marginBottom: 8 }}>{h.class_title}</div>
+                    <StudentTag name={h.child_name} />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                      <a href={`/parent/view/${h.id}/homework`} target="_blank" rel="noopener noreferrer" style={{ ...btn('navy'), padding: '6px 12px', fontSize: 12 }}>View</a>
+                      {h.has_answer && (
+                        <a href={`/parent/view/${h.id}/answer`} target="_blank" rel="noopener noreferrer" style={{ ...btn('secondary'), padding: '6px 12px', fontSize: 12 }}>Answers</a>
+                      )}
                     </div>
                   </ScrollCard>
                 ))}
