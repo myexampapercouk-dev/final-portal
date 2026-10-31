@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { P } from './theme';
 
-// Parent's bell. Every item has View (open the page it is about), Yes (got it -
-// mark done) and No (not needed - dismiss). New items that arrive while the
+// Parent's bell. Items are read-only: the only action is View, which opens the
+// page the item is about and removes it from the list. New items that arrive while the
 // parent is online also pop up as a toast.
 export default function ParentNotifications() {
   const navigate = useNavigate();
@@ -58,8 +58,10 @@ export default function ParentNotifications() {
     }
   }
 
-  function view(n) {
+  // Every parent notification is read-only: View opens the page and clears the item
+  async function view(n) {
     setOpen(false);
+    await resolve(n, 'done');
     if (n.link) navigate(n.link);
   }
 
@@ -81,9 +83,7 @@ export default function ParentNotifications() {
                 {n.body && <div style={{ fontSize: 12, color: P.meta, marginTop: 2 }}>{n.body}</div>}
                 <div style={{ fontSize: 11, color: P.meta, marginTop: 4 }}>{new Date(n.created_at).toLocaleString()}</div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                  {n.link && <button onClick={() => view(n)} style={{ ...styles.action, background: P.navy, color: '#fff', borderColor: P.navy }}>View</button>}
-                  <button onClick={() => resolve(n, 'done')} style={{ ...styles.action, color: P.green, borderColor: P.green }}>Yes</button>
-                  <button onClick={() => resolve(n, 'dismiss')} style={{ ...styles.action, color: P.red, borderColor: P.red }}>No</button>
+                  <button onClick={() => view(n)} style={{ ...styles.action, background: P.navy, color: '#fff', borderColor: P.navy }}>{n.link ? 'View' : 'OK'}</button>
                 </div>
               </div>
             ))}
