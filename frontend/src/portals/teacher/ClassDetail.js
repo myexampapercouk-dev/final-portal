@@ -32,6 +32,8 @@ export default function ClassDetail() {
   const [addingChild, setAddingChild] = useState(false);
   const [newChild, setNewChild] = useState({ name: '', category: '' });
   const [childMsg, setChildMsg] = useState('');
+  const [registerMsg, setRegisterMsg] = useState('');
+  const [savingRegister, setSavingRegister] = useState(false);
   const [editingFb, setEditingFb] = useState(null); // { id, content }
   const [reviewing, setReviewing] = useState(false);
   const [submitMsg, setSubmitMsg] = useState('');
@@ -60,9 +62,23 @@ export default function ClassDetail() {
       registration_id: r.registration_id,
       present: !!attendanceDraft[r.child_id]
     }));
-    await api.post(`/registrations/class/${id}/attendance`, { attendance });
-    await load();
-    setTab('Feedback');
+    setRegisterMsg('');
+    setSavingRegister(true);
+    try {
+      await api.post(`/registrations/class/${id}/attendance`, { attendance });
+      await load();
+      setTab('Feedback');
+    } catch (err) {
+      // Never fail silently - tell the teacher why the register did not save
+      const status = err.response?.status;
+      setRegisterMsg(
+        status === 401 || status === 403
+          ? 'Your session has changed (you may be signed in as someone else in another tab). Please refresh the page or sign in again.'
+          : err.response?.data?.error || 'Could not save the register. Check your connection and try again.'
+      );
+    } finally {
+      setSavingRegister(false);
+    }
   }
 
   async function addChild(e) {
@@ -262,8 +278,15 @@ export default function ClassDetail() {
             <span style={{ fontSize: 13.5 }}>
               <strong style={{ color: T.green }}>{presentCount} present</strong> · {absentCount} absent
             </span>
-            <button style={btn('gold')} onClick={saveAttendance}>Next {'→'}</button>
+            <button style={btn('gold')} disabled={savingRegister} onClick={saveAttendance}>
+              {savingRegister ? 'Saving...' : <>Next {'→'}</>}
+            </button>
           </div>
+          {registerMsg && (
+            <div style={{ marginTop: 10, fontSize: 13, padding: '10px 14px', borderRadius: 8, background: T.redWash, color: T.red }}>
+              {registerMsg}
+            </div>
+          )}
         </div>
       )}
 
