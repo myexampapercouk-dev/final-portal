@@ -43,9 +43,12 @@ async function sendOtpEmail(toEmail, otpCode) {
     }
 }
 
-// Sent when the admin creates a brand-new parent account for a child. It never
-// contains the password - the school gives that to the parent separately.
-async function sendParentCreatedEmail(toEmail, { parentName, childName, category }) {
+// Escape text before putting it in the HTML body (a password can contain < > &).
+const escapeHtml = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// Sent when the admin creates a brand-new parent account for a child. It carries
+// the temporary password the admin set, so the parent can sign in straight away.
+async function sendParentCreatedEmail(toEmail, { parentName, childName, category, password }) {
     const portalUrl = process.env.PORTAL_URL || 'https://portal.myexampapers.co.uk';
     const link = `${portalUrl}/login`;
 
@@ -59,8 +62,8 @@ async function sendParentCreatedEmail(toEmail, { parentName, childName, category
             from: process.env.SMTP_FROM || process.env.SMTP_USER,
             to: toEmail,
             subject: `Your parent account is ready - ${childName} has been added`,
-            text: `Hi ${parentName},\n\nA parent account has been created for you and ${childName} (${category}) has been added to it.\n\nSign in with this email address (${toEmail}) and the password the school gave you: ${link}`,
-            html: `<p>Hi ${parentName},</p><p>A parent account has been created for you, and <b>${childName}</b> (${category}) has been added to it.</p><p>Sign in with this email address (<b>${toEmail}</b>) and the password the school gave you.</p><p><a href="${link}" style="display:inline-block;background:#C9A227;color:#16243D;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none">Sign in to the portal</a></p>`
+            text: `Hi ${parentName},\n\nA parent account has been created for you and ${childName} (${category}) has been added to it.\n\nSign in with:\nEmail: ${toEmail}\nTemporary password: ${password}\n\nSign in here: ${link}`,
+            html: `<p>Hi ${escapeHtml(parentName)},</p><p>A parent account has been created for you, and <b>${escapeHtml(childName)}</b> (${escapeHtml(category)}) has been added to it.</p><p>Sign in with:</p><p style="margin:0">Email: <b>${escapeHtml(toEmail)}</b></p><p style="margin:4px 0 16px">Temporary password: <b style="font-family:monospace;background:#f3efe4;padding:2px 8px;border-radius:6px">${escapeHtml(password)}</b></p><p><a href="${link}" style="display:inline-block;background:#C9A227;color:#16243D;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none">Sign in to the portal</a></p>`
         });
         return { delivered: true };
     } catch (err) {

@@ -96,7 +96,7 @@ router.post('/students/:id/create-parent', async (req, res) => {
     await resolveNewChildNotifications(req.params.id);
 
     // Welcome the new parent and tell them which child is on their account
-    await sendParentCreatedEmail(email, { parentName: name, childName: child[0].name, category: child[0].category });
+    await sendParentCreatedEmail(email, { parentName: name, childName: child[0].name, category: child[0].category, password });
     res.status(201).json({ id: created.insertId, name, email });
   } catch (err) {
     res.status(500).json({ error: 'Could not create parent', details: err.message });
