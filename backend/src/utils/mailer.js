@@ -43,6 +43,32 @@ async function sendOtpEmail(toEmail, otpCode) {
     }
 }
 
+// Sent when the admin creates a brand-new parent account for a child. It never
+// contains the password - the school gives that to the parent separately.
+async function sendParentCreatedEmail(toEmail, { parentName, childName, category }) {
+    const portalUrl = process.env.PORTAL_URL || 'https://portal.myexampapers.co.uk';
+    const link = `${portalUrl}/login`;
+
+    if (!transporter) {
+        console.log(`[DEV - no SMTP configured] Parent-account-created email for ${toEmail} (${childName} ${category})`);
+        return { delivered: false };
+    }
+
+    try {
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
+            to: toEmail,
+            subject: `Your parent account is ready - ${childName} has been added`,
+            text: `Hi ${parentName},\n\nA parent account has been created for you and ${childName} (${category}) has been added to it.\n\nSign in with this email address (${toEmail}) and the password the school gave you: ${link}`,
+            html: `<p>Hi ${parentName},</p><p>A parent account has been created for you, and <b>${childName}</b> (${category}) has been added to it.</p><p>Sign in with this email address (<b>${toEmail}</b>) and the password the school gave you.</p><p><a href="${link}" style="display:inline-block;background:#C9A227;color:#16243D;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none">Sign in to the portal</a></p>`
+        });
+        return { delivered: true };
+    } catch (err) {
+        console.error('[PARENT CREATED EMAIL FAILED]', err.code || '', err.message);
+        return { delivered: false };
+    }
+}
+
 // Sent when the admin links a child to an existing parent's account.
 async function sendChildLinkedEmail(toEmail, { parentName, childName, category }) {
     const portalUrl = process.env.PORTAL_URL || 'https://portal.myexampapers.co.uk';
@@ -120,4 +146,4 @@ async function sendFeedbackReadyEmail(toEmail, { parentName, childName, classNam
     }
 }
 
-module.exports = { sendOtpEmail, sendChildLinkedEmail, sendClassCompletedEmail, sendFeedbackReadyEmail, smtpConfigured };
+module.exports = { sendOtpEmail, sendParentCreatedEmail, sendChildLinkedEmail, sendClassCompletedEmail, sendFeedbackReadyEmail, smtpConfigured };

@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
-const { sendFeedbackReadyEmail, sendChildLinkedEmail } = require('../utils/mailer');
+const { sendFeedbackReadyEmail, sendChildLinkedEmail, sendParentCreatedEmail } = require('../utils/mailer');
 
 const router = express.Router();
 router.use(requireAuth, requireRole('admin'));
@@ -82,7 +82,7 @@ router.post('/students/:id/create-parent', async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'name, email and password are required' });
     }
-    const [child] = await pool.query('SELECT id FROM children WHERE id = ?', [req.params.id]);
+    const [child] = await pool.query('SELECT id, name, category FROM children WHERE id = ?', [req.params.id]);
     if (!child.length) return res.status(404).json({ error: 'Student not found' });
     const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
     if (existing.length) return res.status(409).json({ error: 'Email already registered' });
@@ -94,6 +94,9 @@ router.post('/students/:id/create-parent', async (req, res) => {
     );
     await pool.query('UPDATE children SET parent_id = ? WHERE id = ?', [created.insertId, req.params.id]);
     await resolveNewChildNotifications(req.params.id);
+
+    // Welcome the new parent and tell them which child is on their account
+    await sendParentCreatedEmail(email, { parentName: name, childName: child[0].name, category: child[0].category });
     res.status(201).json({ id: created.insertId, name, email });
   } catch (err) {
     res.status(500).json({ error: 'Could not create parent', details: err.message });
