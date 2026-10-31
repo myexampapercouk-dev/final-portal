@@ -2,7 +2,7 @@
 
 Stack: **React (CRA)** frontend, **Node.js/Express** backend, **MySQL** database.
 
-Live site: https://portal.myexampapers.co.uk
+Live site: https://portal.myexampapers.co.uk (Parent, Teacher and Admin portals)
 
 ## Structure
 ```
