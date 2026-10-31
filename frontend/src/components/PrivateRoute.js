@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 // Wrap any portal page: <PrivateRoute role="parent"><ParentDashboard/></PrivateRoute>
 export default function PrivateRoute({ role, children }) {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to={role === 'admin' ? '/admin/login' : '/login'} replace />;
   if (user.role !== role) return <Navigate to={`/${user.role}`} replace />;
   return children;
 }

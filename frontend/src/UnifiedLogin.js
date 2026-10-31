@@ -71,13 +71,15 @@ const ROLE_CARDS = [
     desc: 'Tutor management, course setup, cash invoice generation.', foot: 'Internal Access Only' }
 ];
 
-const VALID_ROLES = ['parent', 'teacher', 'admin'];
+// The public sign-in page offers Parent and Teacher only. Admin has its own page
+// (/admin/login), which is not linked from the public site.
+const PUBLIC_ROLES = ['parent', 'teacher'];
 
-export default function UnifiedLogin() {
+export default function UnifiedLogin({ adminOnly = false }) {
   const isMobile = useIsMobile(900);
   const location = useLocation();
-  const preselectedRole = VALID_ROLES.includes(location.state?.role) ? location.state.role : 'parent';
-  const [role, setRole] = useState(preselectedRole);
+  const preselectedRole = PUBLIC_ROLES.includes(location.state?.role) ? location.state.role : 'parent';
+  const [role, setRole] = useState(adminOnly ? 'admin' : preselectedRole);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -166,7 +168,9 @@ export default function UnifiedLogin() {
               Institutional Access &amp; Sign In
             </h1>
             <p style={{ fontSize: 14, color: C.meta, margin: 0 }}>
-              Select your role to authenticate. Pupil registers, class rosters, and billing are strictly separated by portal.
+              {adminOnly
+                ? 'Administrator access only.'
+                : 'Select your role to authenticate. Pupil registers, class rosters, and billing are strictly separated by portal.'}
             </p>
           </div>
         </section>
@@ -174,38 +178,40 @@ export default function UnifiedLogin() {
         <div style={{ ...styles.grid, gridTemplateColumns: isMobile ? '1fr' : styles.grid.gridTemplateColumns }}>
           {/* Left: role selector + protocols */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div>
-              <span style={styles.kickerSmall}>Step 1 · Select your portal</span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 10 }}>
-                {ROLE_CARDS.map((r) => {
-                  const active = role === r.key;
-                  return (
-                    <button
-                      key={r.key}
-                      type="button"
-                      onClick={() => setRole(r.key)}
-                      style={{
-                        ...styles.roleCard,
-                        boxShadow: active ? '0 4px 14px rgba(22,36,61,.12)' : '0 1px 3px rgba(22,36,61,.06)',
-                        border: active ? `2px solid ${C.navy}` : '2px solid transparent'
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={styles.iconBox}>{r.icon}</span>
-                        <span style={{ color: active ? C.gold : '#c7ccd6', fontSize: 18 }}>{active ? '✓' : '○'}</span>
-                      </div>
-                      <h3 style={{ fontFamily: C.headlineFont, fontSize: 15, fontWeight: 700, margin: '10px 0 2px', color: C.navy }}>{r.title}</h3>
-                      <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, textTransform: 'uppercase', letterSpacing: '.04em' }}>{r.tag}</span>
-                      <p style={{ fontSize: 12, color: C.meta, margin: '6px 0 10px' }}>{r.desc}</p>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: C.meta, background: C.cream, padding: '3px 9px', borderRadius: 999 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green }} />
-                        {r.foot}
-                      </span>
-                    </button>
-                  );
-                })}
+            {!adminOnly && (
+              <div>
+                <span style={styles.kickerSmall}>Step 1 · Select your portal</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 10 }}>
+                  {ROLE_CARDS.filter((r) => PUBLIC_ROLES.includes(r.key)).map((r) => {
+                    const active = role === r.key;
+                    return (
+                      <button
+                        key={r.key}
+                        type="button"
+                        onClick={() => setRole(r.key)}
+                        style={{
+                          ...styles.roleCard,
+                          boxShadow: active ? '0 4px 14px rgba(22,36,61,.12)' : '0 1px 3px rgba(22,36,61,.06)',
+                          border: active ? `2px solid ${C.navy}` : '2px solid transparent'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={styles.iconBox}>{r.icon}</span>
+                          <span style={{ color: active ? C.gold : '#c7ccd6', fontSize: 18 }}>{active ? '✓' : '○'}</span>
+                        </div>
+                        <h3 style={{ fontFamily: C.headlineFont, fontSize: 15, fontWeight: 700, margin: '10px 0 2px', color: C.navy }}>{r.title}</h3>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: C.gold, textTransform: 'uppercase', letterSpacing: '.04em' }}>{r.tag}</span>
+                        <p style={{ fontSize: 12, color: C.meta, margin: '6px 0 10px' }}>{r.desc}</p>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: C.meta, background: C.cream, padding: '3px 9px', borderRadius: 999 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green }} />
+                          {r.foot}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             <div>
               <span style={styles.kickerSmall}>Operational Protocols</span>
@@ -253,6 +259,11 @@ export default function UnifiedLogin() {
                     </button>
                   </div>
                 </div>
+                {role !== 'admin' && (
+                  <div style={{ textAlign: 'right', marginTop: -6 }}>
+                    <Link to="/forgot-password" style={{ fontSize: 12.5, fontWeight: 600, color: C.navy }}>Forgot password?</Link>
+                  </div>
+                )}
                 {error && <div style={{ color: C.red, fontSize: 12.5, background: C.redWash, padding: '8px 12px', borderRadius: 8 }}>{error}</div>}
                 <button type="submit" disabled={sending} style={styles.submitBtn}>
                   {sending ? 'Checking...' : copy.cta} {'→'}

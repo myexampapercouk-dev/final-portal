@@ -340,9 +340,6 @@ export default function Landing() {
             <GatewayCard icon="school" bg={C.secondaryFixed} fg={C.secondary} title="Teacher Portal"
               desc="Instructor credentials issued directly by Admin. View assigned classes and attendance registers."
               btnBg={C.secondary} btnFg="#fff" btnLabel="Teacher Sign In" onClick={() => navigate('/login', { state: { role: 'teacher' } })} />
-            <GatewayCard icon="admin_panel_settings" bg={C.tertiaryFixed} fg={C.tertiary} title="Admin Portal"
-              desc="Central administrative governance, tutor allocation, and consolidated cash invoicing."
-              btnBg={C.surfaceContainer} btnFg={C.onSurface} btnLabel="Admin Sign In" onClick={() => navigate('/login', { state: { role: 'admin' } })} />
           </div>
         </section>
       </main>

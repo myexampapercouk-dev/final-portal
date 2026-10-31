@@ -46,6 +46,28 @@ async function sendOtpEmail(toEmail, otpCode) {
 // Escape text before putting it in the HTML body (a password can contain < > &).
 const escapeHtml = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+// Password reset link. Valid for 1 hour and usable once.
+async function sendPasswordResetEmail(toEmail, { name, link }) {
+    if (!transporter) {
+        console.log(`[DEV - no SMTP configured] Password reset link for ${toEmail}: ${link}`);
+        return { delivered: false };
+    }
+
+    try {
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
+            to: toEmail,
+            subject: 'Reset your MyExamPapers password',
+            text: `Hi ${name},\n\nWe received a request to reset your password. Use this link within 1 hour:\n${link}\n\nIf you did not ask for this, you can ignore this email - your password will not change.`,
+            html: `<p>Hi ${name},</p><p>We received a request to reset your password. The link below works once and expires in 1 hour.</p><p><a href="${link}" style="display:inline-block;background:#C9A227;color:#16243D;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none">Choose a new password</a></p><p style="color:#66707F;font-size:13px">If you did not ask for this, you can ignore this email - your password will not change.</p>`
+        });
+        return { delivered: true };
+    } catch (err) {
+        console.error('[PASSWORD RESET EMAIL FAILED]', err.code || '', err.message);
+        return { delivered: false };
+    }
+}
+
 // Sent when the admin creates a brand-new parent account for a child. It carries
 // the temporary password the admin set, so the parent can sign in straight away.
 async function sendParentCreatedEmail(toEmail, { parentName, childName, category, password }) {
@@ -149,4 +171,4 @@ async function sendFeedbackReadyEmail(toEmail, { parentName, childName, classNam
     }
 }
 
-module.exports = { sendOtpEmail, sendParentCreatedEmail, sendChildLinkedEmail, sendClassCompletedEmail, sendFeedbackReadyEmail, smtpConfigured };
+module.exports = { sendOtpEmail, sendPasswordResetEmail, sendParentCreatedEmail, sendChildLinkedEmail, sendClassCompletedEmail, sendFeedbackReadyEmail, smtpConfigured };

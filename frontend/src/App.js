@@ -4,6 +4,8 @@ import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 import Landing from './Landing';
 import UnifiedLogin from './UnifiedLogin';
+import ForgotPassword from './ForgotPassword';
+import ResetPassword from './ResetPassword';
 
 // Parent portal
 import { ParentProvider } from './portals/parent/ParentContext';
@@ -65,6 +67,11 @@ export default function App() {
           {/* Single, portal-neutral entry points */}
           <Route path="/login" element={<UnifiedLogin />} />
           <Route path="/register" element={<ParentRegister />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
+          {/* Admin has its own sign-in page, not linked from the public site */}
+          <Route path="/admin/login" element={<UnifiedLogin adminOnly />} />
 
           {/* Parent */}
           <Route path="/parent" element={<ParentPage><ParentDashboard /></ParentPage>} />
