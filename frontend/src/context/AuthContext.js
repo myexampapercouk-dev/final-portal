@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import api from '../api/axios';
 
 const AuthContext = createContext(null);
@@ -8,6 +8,20 @@ export function AuthProvider({ children }) {
     const stored = localStorage.getItem('user');
     return stored ? JSON.parse(stored) : null;
   });
+
+  // Every browser tab shares one login. If someone signs in as a different
+  // user (or signs out) in another tab, follow it here too - otherwise this tab
+  // keeps showing the old portal while its requests carry the new user's token,
+  // which the server rejects with "insufficient role".
+  useEffect(() => {
+    function onStorage(e) {
+      if (e.key !== 'token' && e.key !== 'user' && e.key !== null) return;
+      const stored = localStorage.getItem('user');
+      setUser(stored ? JSON.parse(stored) : null);
+    }
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   function saveSession(token, user) {
     localStorage.setItem('token', token);
