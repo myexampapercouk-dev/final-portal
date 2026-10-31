@@ -80,8 +80,12 @@ export default function AdminNotifications() {
                   {n.body && <div style={{ fontSize: 12, color: A.meta, marginTop: 2 }}>{n.body}</div>}
                   <div style={{ fontSize: 11, color: A.meta, marginTop: 4 }}>{new Date(n.created_at).toLocaleString()}</div>
                 </div>
-                <button title="Done" onClick={() => resolve(n, 'done')} style={{ ...styles.round, color: A.green, borderColor: A.green }}>{'✓'}</button>
-                <button title="No longer needed" onClick={() => resolve(n, 'dismiss')} style={{ ...styles.round, color: A.red, borderColor: A.red }}>{'✕'}</button>
+                <button title="Done" aria-label="Mark done" onClick={() => resolve(n, 'done')} style={{ ...styles.round, color: A.green, borderColor: A.green }}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.8" /></svg>
+                </button>
+                <button title="No longer needed" aria-label="Dismiss" onClick={() => resolve(n, 'dismiss')} style={{ ...styles.round, color: A.red, borderColor: A.red }}>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" /></svg>
+                </button>
               </div>
             ))}
           </div>
@@ -113,8 +117,8 @@ const styles = {
   },
   item: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '12px 14px', borderBottom: `1px solid ${A.line}` },
   round: {
-    width: 28, height: 28, borderRadius: '50%', border: '1.5px solid', background: '#fff',
-    cursor: 'pointer', fontSize: 13, fontWeight: 700, flexShrink: 0
+    width: 32, height: 32, borderRadius: '50%', border: '1.5px solid', background: '#fff',
+    cursor: 'pointer', flexShrink: 0, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center'
   },
   toast: {
     position: 'fixed', top: 70, right: 16, maxWidth: 340, background: A.navy, color: '#fff', padding: '12px 16px',
