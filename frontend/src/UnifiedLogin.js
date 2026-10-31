@@ -300,12 +300,23 @@ export default function UnifiedLogin({ adminOnly = false }) {
 
             <div style={{ marginTop: 20, borderTop: `1px solid ${C.line}`, paddingTop: 16 }}>
               {role === 'parent' && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, borderRadius: 10, background: C.cream, gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16, borderRadius: 12, background: C.cream }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: C.navy }}>New Prep School Family?</div>
-                    <div style={{ fontSize: 12, color: C.meta }}>Register to add your child and book classes</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: C.navy }}>New Prep School Family?</div>
+                    <div style={{ fontSize: 12.5, color: C.meta, marginTop: 3, lineHeight: 1.5 }}>
+                      Create your parent account, then add your child and book classes from your dashboard.
+                    </div>
                   </div>
-                  <Link to="/register" style={styles.submitBtnSmall}>Create Account</Link>
+                  <Link
+                    to="/register"
+                    style={{
+                      display: 'block', textAlign: 'center', padding: '12px 16px', borderRadius: 10,
+                      border: `1.5px solid ${C.navy}`, background: C.paper, color: C.navy,
+                      fontWeight: 700, fontSize: 14, textDecoration: 'none', whiteSpace: 'nowrap'
+                    }}
+                  >
+                    Create Account
+                  </Link>
                 </div>
               )}
               {role === 'teacher' && (
