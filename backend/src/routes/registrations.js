@@ -333,18 +333,25 @@ router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher
       link: `/admin/approvals/${req.params.classId}`,
       refId: Number(req.params.classId)
     });
+  }
 
-    // Tell each present child's parent straight away that the class is completed.
-    // The feedback itself is emailed later, when admin approves it. Children with
-    // no parent linked yet are skipped; sent once only, not on a re-submit.
-    for (const p of present) {
-      if (!p.parent_email) continue;
-      await sendClassCompletedEmail(p.parent_email, {
-        parentName: p.parent_name,
-        childName: p.child_name,
-        className: cls[0].title
-      });
-    }
+  // Tell each present child's parent straight away that the class is completed.
+  // The feedback itself is emailed later, when admin approves it. Children with
+  // no parent linked yet are skipped. Each child is emailed once ever: a ledger
+  // row per registration (in system_meta) stops a re-submit from sending it again,
+  // while still reaching children of a class that was completed before this existed.
+  for (const p of present) {
+    if (!p.parent_email) continue;
+    const [claimed] = await pool.query(
+      'INSERT IGNORE INTO system_meta (k, v) VALUES (?, ?)',
+      [`class_done_email:${p.registration_id}`, new Date().toISOString()]
+    );
+    if (!claimed.affectedRows) continue;
+    await sendClassCompletedEmail(p.parent_email, {
+      parentName: p.parent_name,
+      childName: p.child_name,
+      className: cls[0].title
+    });
   }
   res.json({ success: true });
 });
