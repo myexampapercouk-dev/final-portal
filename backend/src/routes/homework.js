@@ -50,8 +50,6 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
          VALUES (?,?,?,?,?,?)`,
         [class_id, title, hw.originalname, hw.filename, ans ? ans.originalname : null, ans ? ans.filename : null]
       );
-      await keepCopy(result.insertId, 'homework', hw);
-      if (ans) await keepCopy(result.insertId, 'answer', ans);
       // Tell the parents of the children booked into this class
       try {
         const [parents] = await pool.query(
@@ -67,6 +65,8 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
         console.error('[HOMEWORK NOTIFY FAILED]', e.message);
       }
       res.status(201).json({ id: result.insertId });
+      // Database backup copy runs after the response so a slow save can never hold the upload up
+      keepCopy(result.insertId, 'homework', hw).then(() => (ans ? keepCopy(result.insertId, 'answer', ans) : null));
     } catch (e) {
       res.status(500).json({ error: 'Could not save homework', details: e.message });
     }
