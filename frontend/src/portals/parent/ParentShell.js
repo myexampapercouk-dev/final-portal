@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import DueInvoicesToast from './DueInvoicesToast';
+import ParentNotifications from './ParentNotifications';
 import { P, initials } from './theme';
 
 const NAV = [
@@ -94,6 +95,7 @@ export default function ParentShell({ children }) {
           </span>
         </Link>
         <div style={{ flex: 1 }} />
+        <ParentNotifications />
         <div style={styles.avatarSm}>{user?.name ? initials(user.name) : ''}</div>
       </header>
 

@@ -13,6 +13,8 @@ const mockExamsRoutes = require('./routes/mockExams');
 const invoicesRoutes = require('./routes/invoices');
 const adminRoutes = require('./routes/admin');
 const homeworkRoutes = require('./routes/homework');
+const notificationsRoutes = require('./routes/notifications');
+const { ensureNotificationSchema } = require('./utils/notifications');
 const { startCategoryUpgradeJob } = require('./utils/categoryUpgrade');
 
 // Express 4 does not catch errors thrown inside async route handlers. Without
@@ -40,6 +42,7 @@ app.use('/api/mock-exams', mockExamsRoutes);
 app.use('/api/invoices', invoicesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/homework', homeworkRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Central error handler (fallback)
 app.use((err, req, res, next) => {
@@ -50,5 +53,6 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Edu Portal API running on port ${PORT}`);
+  ensureNotificationSchema();
   startCategoryUpgradeJob();
 });

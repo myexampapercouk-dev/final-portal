@@ -198,6 +198,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   body VARCHAR(500) NULL,
   link VARCHAR(255) NULL,
   ref_id INT NULL,
+  user_id INT NULL,
   status ENUM('open','done','dismissed') NOT NULL DEFAULT 'open',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

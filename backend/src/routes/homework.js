@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const pool = require('../config/db');
+const { notifyUser } = require('../utils/notifications');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { uploadHomework, homeworkDir } = require('../middleware/uploadHomework');
 
@@ -23,6 +24,20 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
          VALUES (?,?,?,?,?,?)`,
         [class_id, title, hw.originalname, hw.filename, ans ? ans.originalname : null, ans ? ans.filename : null]
       );
+      // Tell the parents of the children booked into this class
+      try {
+        const [parents] = await pool.query(
+          `SELECT DISTINCT ch.parent_id FROM class_registrations cr
+           JOIN children ch ON ch.id = cr.child_id
+           WHERE cr.class_id = ? AND cr.status <> 'cancelled' AND ch.parent_id IS NOT NULL`,
+          [class_id]
+        );
+        for (const p of parents) {
+          await notifyUser(p.parent_id, { type: 'parent_homework', title: 'New homework', body: title, link: '/parent/homework' });
+        }
+      } catch (e) {
+        console.error('[HOMEWORK NOTIFY FAILED]', e.message);
+      }
       res.status(201).json({ id: result.insertId });
     } catch (e) {
       res.status(500).json({ error: 'Could not save homework', details: e.message });

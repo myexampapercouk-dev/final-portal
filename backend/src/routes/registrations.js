@@ -1,7 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
-const { notifyAdmin } = require('../utils/notifications');
+const { notifyAdmin, notifyUser } = require('../utils/notifications');
 const { sendClassCompletedEmail } = require('../utils/mailer');
 
 const router = express.Router();
@@ -294,7 +294,7 @@ router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher
   }
 
   const [present] = await pool.query(
-    `SELECT cr.id AS registration_id, ch.name AS child_name,
+    `SELECT cr.id AS registration_id, ch.name AS child_name, ch.parent_id,
             u.name AS parent_name, u.email AS parent_email
      FROM class_registrations cr
      JOIN children ch ON ch.id = cr.child_id
@@ -351,6 +351,12 @@ router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher
       parentName: p.parent_name,
       childName: p.child_name,
       className: cls[0].title
+    });
+    await notifyUser(p.parent_id, {
+      type: 'parent_class_completed',
+      title: `${p.child_name}'s class is completed`,
+      body: `${cls[0].title} - feedback will follow once it has been reviewed.`,
+      link: '/parent/attended'
     });
   }
   res.json({ success: true });

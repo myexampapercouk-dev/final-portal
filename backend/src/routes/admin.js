@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { notifyUser, adminOnlyClause } = require('../utils/notifications');
 const { sendFeedbackReadyEmail, sendChildLinkedEmail, sendParentCreatedEmail } = require('../utils/mailer');
 
 const router = express.Router();
@@ -71,6 +72,12 @@ router.put('/students/:id/parent', async (req, res) => {
       childName: existing[0].name,
       category: existing[0].category
     });
+    await notifyUser(parents[0].id, {
+      type: 'parent_child_linked',
+      title: `${existing[0].name} has been added to your account`,
+      body: 'You can now book classes and see their progress.',
+      link: '/parent/children'
+    });
   }
   res.json({ success: true });
 });
@@ -97,6 +104,12 @@ router.post('/students/:id/create-parent', async (req, res) => {
 
     // Welcome the new parent and tell them which child is on their account
     await sendParentCreatedEmail(email, { parentName: name, childName: child[0].name, category: child[0].category, password });
+    await notifyUser(created.insertId, {
+      type: 'parent_child_linked',
+      title: `${child[0].name} has been added to your account`,
+      body: 'You can now book classes and see their progress.',
+      link: '/parent/children'
+    });
     res.status(201).json({ id: created.insertId, name, email });
   } catch (err) {
     res.status(500).json({ error: 'Could not create parent', details: err.message });
@@ -108,7 +121,7 @@ router.post('/students/:id/create-parent', async (req, res) => {
 // ---------------------------------------------------------------
 router.get('/notifications', async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT * FROM notifications WHERE status = 'open' ORDER BY created_at DESC LIMIT 50`
+    `SELECT * FROM notifications WHERE status = 'open'${adminOnlyClause()} ORDER BY created_at DESC LIMIT 50`
   );
   res.json(rows);
 });
@@ -183,7 +196,7 @@ router.post('/classes/:id/approve-feedback', async (req, res) => {
 
   // One email per parent, per child that was present (children without a parent are skipped)
   const [recipients] = await pool.query(
-    `SELECT ch.name AS child_name, u.name AS parent_name, u.email AS parent_email
+    `SELECT u.id AS parent_id, ch.name AS child_name, u.name AS parent_name, u.email AS parent_email
      FROM class_registrations cr
      JOIN children ch ON ch.id = cr.child_id
      JOIN users u ON u.id = ch.parent_id
@@ -195,6 +208,12 @@ router.post('/classes/:id/approve-feedback', async (req, res) => {
       parentName: r.parent_name,
       childName: r.child_name,
       className: classes[0].title
+    });
+    await notifyUser(r.parent_id, {
+      type: 'parent_feedback_ready',
+      title: `Feedback ready for ${r.child_name}`,
+      body: classes[0].title,
+      link: '/parent'
     });
   }
   res.json({ success: true, notified: recipients.length });

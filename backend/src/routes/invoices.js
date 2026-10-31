@@ -1,5 +1,6 @@
 const express = require('express');
 const pool = require('../config/db');
+const { notifyUser } = require('../utils/notifications');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
@@ -66,6 +67,12 @@ router.post('/parents/:parentId/generate', requireAuth, requireRole('admin'), as
     }
     await conn.commit();
     const [invoice] = await pool.query('SELECT * FROM invoices WHERE id = ?', [invoiceId]);
+    await notifyUser(req.params.parentId, {
+      type: 'parent_invoice',
+      title: 'You have a new invoice',
+      body: `Total £${Number(total).toFixed(2)}`,
+      link: '/parent/invoices'
+    });
     res.status(201).json(invoice[0]);
   } catch (err) {
     await conn.rollback();
