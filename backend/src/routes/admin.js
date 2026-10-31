@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
-const { sendFeedbackReadyEmail } = require('../utils/mailer');
+const { sendFeedbackReadyEmail, sendChildLinkedEmail } = require('../utils/mailer');
 
 const router = express.Router();
 router.use(requireAuth, requireRole('admin'));
@@ -57,11 +57,21 @@ async function resolveNewChildNotifications(childId) {
 // Link a child to an existing parent
 router.put('/students/:id/parent', async (req, res) => {
   const { parent_id } = req.body;
-  const [parents] = await pool.query(`SELECT id FROM users WHERE id = ? AND role = 'parent'`, [parent_id]);
+  const [parents] = await pool.query(`SELECT id, name, email FROM users WHERE id = ? AND role = 'parent'`, [parent_id]);
   if (!parents.length) return res.status(404).json({ error: 'Parent not found' });
-  const [result] = await pool.query('UPDATE children SET parent_id = ? WHERE id = ?', [parent_id, req.params.id]);
-  if (!result.affectedRows) return res.status(404).json({ error: 'Student not found' });
+  const [existing] = await pool.query('SELECT name, category, parent_id FROM children WHERE id = ?', [req.params.id]);
+  if (!existing.length) return res.status(404).json({ error: 'Student not found' });
+  await pool.query('UPDATE children SET parent_id = ? WHERE id = ?', [parent_id, req.params.id]);
   await resolveNewChildNotifications(req.params.id);
+
+  // Let the parent know the child now appears on their account (not when nothing changed)
+  if (Number(existing[0].parent_id) !== Number(parent_id)) {
+    await sendChildLinkedEmail(parents[0].email, {
+      parentName: parents[0].name,
+      childName: existing[0].name,
+      category: existing[0].category
+    });
+  }
   res.json({ success: true });
 });
 

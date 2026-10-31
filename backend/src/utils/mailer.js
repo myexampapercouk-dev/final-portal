@@ -43,6 +43,31 @@ async function sendOtpEmail(toEmail, otpCode) {
     }
 }
 
+// Sent when the admin links a child to an existing parent's account.
+async function sendChildLinkedEmail(toEmail, { parentName, childName, category }) {
+    const portalUrl = process.env.PORTAL_URL || 'https://portal.myexampapers.co.uk';
+    const link = `${portalUrl}/parent`;
+
+    if (!transporter) {
+        console.log(`[DEV - no SMTP configured] Child-linked email for ${toEmail} (${childName} ${category})`);
+        return { delivered: false };
+    }
+
+    try {
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
+            to: toEmail,
+            subject: `${childName} has been added to your account`,
+            text: `Hi ${parentName},\n\n${childName} (${category}) has been added to your parent account. You can now see their classes, feedback and homework in the portal.\n\nOpen the portal: ${link}`,
+            html: `<p>Hi ${parentName},</p><p><b>${childName}</b> (${category}) has been added to your parent account.</p><p>You can now see their classes, feedback and homework in the portal.</p><p><a href="${link}" style="display:inline-block;background:#C9A227;color:#16243D;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none">Open the portal</a></p>`
+        });
+        return { delivered: true };
+    } catch (err) {
+        console.error('[CHILD LINKED EMAIL FAILED]', err.code || '', err.message);
+        return { delivered: false };
+    }
+}
+
 // Sent as soon as the teacher completes a class: tells the parent THIS child's
 // class is done. It carries no feedback - that follows once admin approves it.
 async function sendClassCompletedEmail(toEmail, { parentName, childName, className }) {
@@ -95,4 +120,4 @@ async function sendFeedbackReadyEmail(toEmail, { parentName, childName, classNam
     }
 }
 
-module.exports = { sendOtpEmail, sendClassCompletedEmail, sendFeedbackReadyEmail, smtpConfigured };
+module.exports = { sendOtpEmail, sendChildLinkedEmail, sendClassCompletedEmail, sendFeedbackReadyEmail, smtpConfigured };
