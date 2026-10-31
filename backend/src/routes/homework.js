@@ -8,6 +8,32 @@ const { uploadHomework, homeworkDir } = require('../middleware/uploadHomework');
 
 const router = express.Router();
 
+// The PDFs are also kept in the database (homework_files). Hosting redeploys can
+// wipe files on disk; the database copy means a PDF is never lost that way.
+let tableReady = null;
+function ensureFilesTable() {
+  if (!tableReady) {
+    tableReady = pool.query(
+      `CREATE TABLE IF NOT EXISTS homework_files (
+         homework_id INT NOT NULL,
+         kind VARCHAR(10) NOT NULL,
+         data LONGBLOB NOT NULL,
+         PRIMARY KEY (homework_id, kind)
+       )`
+    ).catch((e) => { tableReady = null; console.error('[HOMEWORK FILES TABLE]', e.message); throw e; });
+  }
+  return tableReady;
+}
+async function keepCopy(homeworkId, kind, file) {
+  try {
+    await ensureFilesTable();
+    await pool.query('REPLACE INTO homework_files (homework_id, kind, data) VALUES (?,?,?)',
+      [homeworkId, kind, fs.readFileSync(path.join(homeworkDir, file.filename))]);
+  } catch (e) {
+    console.error('[HOMEWORK COPY FAILED]', e.message);
+  }
+}
+
 // ADMIN: upload homework (+ optional answer PDF) for a class
 router.post('/', requireAuth, requireRole('admin'), (req, res) => {
   uploadHomework(req, res, async (err) => {
@@ -24,6 +50,8 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
          VALUES (?,?,?,?,?,?)`,
         [class_id, title, hw.originalname, hw.filename, ans ? ans.originalname : null, ans ? ans.filename : null]
       );
+      await keepCopy(result.insertId, 'homework', hw);
+      if (ans) await keepCopy(result.insertId, 'answer', ans);
       // Tell the parents of the children booked into this class
       try {
         const [parents] = await pool.query(
@@ -62,6 +90,7 @@ router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
     if (f) fs.unlink(path.join(homeworkDir, path.basename(f)), () => {});
   }
   await pool.query('DELETE FROM homework WHERE id = ?', [req.params.id]);
+  try { await ensureFilesTable(); await pool.query('DELETE FROM homework_files WHERE homework_id = ?', [req.params.id]); } catch (e) { /* nothing to remove */ }
   res.json({ success: true });
 });
 
@@ -103,15 +132,30 @@ router.get('/:id/file/:kind', requireAuth, requireRole('parent', 'admin', 'teach
   const stored = req.params.kind === 'answer' ? hw.answer_file_path : req.params.kind === 'homework' ? hw.file_path : null;
   if (!stored) return res.status(404).json({ error: 'File not found' });
   const full = path.join(homeworkDir, path.basename(stored));
-  if (!fs.existsSync(full)) return res.status(404).json({ error: 'File missing on server' });
-
-  res.set({
+  const headers = {
     'Content-Type': 'application/pdf',
     'Content-Disposition': 'inline',
     'Cache-Control': 'no-store, max-age=0',
     'X-Content-Type-Options': 'nosniff'
-  });
-  fs.createReadStream(full).pipe(res);
+  };
+  if (fs.existsSync(full)) {
+    res.set(headers);
+    return fs.createReadStream(full).pipe(res);
+  }
+  // Not on disk (e.g. wiped by a redeploy): serve the database copy and restore the file
+  try {
+    await ensureFilesTable();
+    const [copy] = await pool.query('SELECT data FROM homework_files WHERE homework_id = ? AND kind = ?', [hw.id, req.params.kind]);
+    if (copy.length) {
+      fs.mkdirSync(homeworkDir, { recursive: true });
+      fs.writeFile(full, copy[0].data, () => {});
+      res.set(headers);
+      return res.send(copy[0].data);
+    }
+  } catch (e) {
+    console.error('[HOMEWORK COPY READ FAILED]', e.message);
+  }
+  res.status(404).json({ error: 'File missing on server - please ask admin to upload it again' });
 });
 
 module.exports = router;
