@@ -43,6 +43,32 @@ async function sendOtpEmail(toEmail, otpCode) {
     }
 }
 
+// Sent as soon as the teacher completes a class: tells the parent THIS child's
+// class is done. It carries no feedback - that follows once admin approves it.
+async function sendClassCompletedEmail(toEmail, { parentName, childName, className }) {
+    const portalUrl = process.env.PORTAL_URL || 'https://portal.myexampapers.co.uk';
+    const link = `${portalUrl}/parent`;
+
+    if (!transporter) {
+        console.log(`[DEV - no SMTP configured] Class-completed email for ${toEmail} (${childName} - ${className})`);
+        return { delivered: false };
+    }
+
+    try {
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || process.env.SMTP_USER,
+            to: toEmail,
+            subject: `${className} completed for ${childName}`,
+            text: `Hi ${parentName},\n\n${className} has been completed for ${childName}. The teacher's feedback is being reviewed and you will get another email as soon as it is available.\n\nPortal: ${link}`,
+            html: `<p>Hi ${parentName},</p><p><b>${className}</b> has been completed for <b>${childName}</b>.</p><p>The teacher's feedback is being reviewed. You will receive another email as soon as it is available.</p><p><a href="${link}" style="display:inline-block;background:#16243D;color:#ffffff;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none">Open the portal</a></p>`
+        });
+        return { delivered: true };
+    } catch (err) {
+        console.error('[CLASS COMPLETED EMAIL FAILED]', err.code || '', err.message);
+        return { delivered: false };
+    }
+}
+
 // Tells a parent that admin has approved the feedback for their child's class.
 // Only a short message and a button - the feedback itself is read in the portal.
 async function sendFeedbackReadyEmail(toEmail, { parentName, childName, className }) {
@@ -58,9 +84,9 @@ async function sendFeedbackReadyEmail(toEmail, { parentName, childName, classNam
         await transporter.sendMail({
             from: process.env.SMTP_FROM || process.env.SMTP_USER,
             to: toEmail,
-            subject: `${className} completed - feedback for ${childName} is ready`,
-            text: `Hi ${parentName},\n\n${className} has been completed and the teacher's feedback for ${childName} is now available.\n\nView it in the portal: ${link}`,
-            html: `<p>Hi ${parentName},</p><p><b>${className}</b> has been completed and the teacher's feedback for <b>${childName}</b> is now available.</p><p><a href="${link}" style="display:inline-block;background:#C9A227;color:#16243D;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none">View in portal</a></p>`
+            subject: `Feedback for ${childName} from ${className} is now available`,
+            text: `Hi ${parentName},\n\nThe teacher's feedback for ${childName} from ${className} is now available.\n\nView it in the portal: ${link}`,
+            html: `<p>Hi ${parentName},</p><p>The teacher's feedback for <b>${childName}</b> from <b>${className}</b> is now available.</p><p><a href="${link}" style="display:inline-block;background:#C9A227;color:#16243D;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none">View in portal</a></p>`
         });
         return { delivered: true };
     } catch (err) {
@@ -69,4 +95,4 @@ async function sendFeedbackReadyEmail(toEmail, { parentName, childName, classNam
     }
 }
 
-module.exports = { sendOtpEmail, sendFeedbackReadyEmail, smtpConfigured };
+module.exports = { sendOtpEmail, sendClassCompletedEmail, sendFeedbackReadyEmail, smtpConfigured };

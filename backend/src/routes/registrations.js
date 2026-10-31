@@ -2,6 +2,7 @@ const express = require('express');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { notifyAdmin } = require('../utils/notifications');
+const { sendClassCompletedEmail } = require('../utils/mailer');
 
 const router = express.Router();
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
@@ -280,7 +281,8 @@ router.get('/child/:childId/feedback', requireAuth, requireRole('parent'), async
 // ---------------------------------------------------------------
 // TEACHER: "Complete class". Every present student needs at least one remark.
 // The class is marked completed and goes to admin for approval - parents are
-// NOT emailed and cannot see the feedback until admin approves it.
+// only emailed a "class completed" note; they cannot see the feedback (and get
+// the feedback email) until admin approves it.
 // ---------------------------------------------------------------
 router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher'), async (req, res) => {
   const [cls] = await pool.query('SELECT * FROM classes WHERE id = ? AND teacher_id = ?', [
@@ -292,9 +294,11 @@ router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher
   }
 
   const [present] = await pool.query(
-    `SELECT cr.id AS registration_id, ch.name AS child_name
+    `SELECT cr.id AS registration_id, ch.name AS child_name,
+            u.name AS parent_name, u.email AS parent_email
      FROM class_registrations cr
      JOIN children ch ON ch.id = cr.child_id
+     LEFT JOIN users u ON u.id = ch.parent_id
      WHERE cr.class_id = ? AND cr.present = 1`,
     [req.params.classId]
   );
@@ -329,6 +333,18 @@ router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher
       link: `/admin/approvals/${req.params.classId}`,
       refId: Number(req.params.classId)
     });
+
+    // Tell each present child's parent straight away that the class is completed.
+    // The feedback itself is emailed later, when admin approves it. Children with
+    // no parent linked yet are skipped; sent once only, not on a re-submit.
+    for (const p of present) {
+      if (!p.parent_email) continue;
+      await sendClassCompletedEmail(p.parent_email, {
+        parentName: p.parent_name,
+        childName: p.child_name,
+        className: cls[0].title
+      });
+    }
   }
   res.json({ success: true });
 });
