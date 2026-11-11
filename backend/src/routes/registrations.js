@@ -343,6 +343,26 @@ router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher
     }
   }
 
+  // Homework becomes visible to parents now that the class is completed: tell the parents of
+  // everyone booked in, the first time only.
+  if (!alreadyPending) {
+    try {
+      const [hwRows] = await pool.query('SELECT title FROM homework WHERE class_id = ? ORDER BY id DESC LIMIT 1', [req.params.classId]);
+      if (hwRows.length) {
+        const [hwParents] = await pool.query(
+          `SELECT DISTINCT ch.parent_id FROM class_registrations cr JOIN children ch ON ch.id = cr.child_id
+           WHERE cr.class_id = ? AND cr.status <> 'cancelled' AND ch.parent_id IS NOT NULL`,
+          [req.params.classId]
+        );
+        for (const p of hwParents) {
+          await notifyUser(p.parent_id, { type: 'parent_homework', title: 'New homework', body: hwRows[0].title, link: '/parent/homework' });
+        }
+      }
+    } catch (e) {
+      console.error('[HOMEWORK NOTIFY FAILED]', e.message);
+    }
+  }
+
   // Tell each present child's parent straight away that the class is completed.
   // The feedback itself is emailed later, when admin approves it. Children with
   // no parent linked yet are skipped. Each child is emailed once ever: a ledger

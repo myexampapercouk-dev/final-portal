@@ -31,9 +31,11 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
          VALUES (?,?,?,?,?,?,?)`,
         [class_id, title, hw.originalname, hw.filename, ans ? ans.originalname : null, ans ? ans.filename : null, totalQuestions]
       );
-      // Tell the parents of the children booked into this class
+      // Parents only see homework once the class is completed. If it already is, tell them now;
+      // otherwise they are told when the teacher completes the class.
       try {
-        const [parents] = await pool.query(
+        const [done] = await pool.query("SELECT id FROM classes WHERE id = ? AND status = 'completed'", [class_id]);
+        const [parents] = !done.length ? [[]] : await pool.query(
           `SELECT DISTINCT ch.parent_id FROM class_registrations cr
            JOIN children ch ON ch.id = cr.child_id
            WHERE cr.class_id = ? AND cr.status <> 'cancelled' AND ch.parent_id IS NOT NULL`,
@@ -88,7 +90,7 @@ router.get('/', requireAuth, requireRole('parent'), async (req, res) => {
      FROM homework h
      JOIN classes c ON c.id = h.class_id
      JOIN class_registrations cr ON cr.class_id = c.id
-     WHERE cr.child_id = ? AND cr.status IN ('upcoming','attended')
+     WHERE cr.child_id = ? AND cr.status IN ('upcoming','attended') AND c.status = 'completed'
      ORDER BY h.created_at DESC, h.id DESC`,
     [child_id]
   );
@@ -122,7 +124,8 @@ router.post('/:id/feedback', requireAuth, requireRole('parent'), async (req, res
   if (!rows.length) return res.status(404).json({ error: 'Homework not found' });
   const hw = rows[0];
   const [booked] = await pool.query(
-    `SELECT id FROM class_registrations WHERE class_id = ? AND child_id = ? AND status IN ('upcoming','attended') LIMIT 1`,
+    `SELECT cr.id FROM class_registrations cr JOIN classes c ON c.id = cr.class_id
+     WHERE cr.class_id = ? AND cr.child_id = ? AND cr.status IN ('upcoming','attended') AND c.status = 'completed' LIMIT 1`,
     [hw.class_id, child_id]
   );
   if (!booked.length) return res.status(403).json({ error: 'This homework is not for your child' });
@@ -169,7 +172,8 @@ router.get('/:id/file/:kind', requireAuth, requireRole('parent', 'admin', 'teach
     const [allowed] = await pool.query(
       `SELECT cr.id FROM class_registrations cr
        JOIN children ch ON ch.id = cr.child_id
-       WHERE cr.class_id = ? AND ch.parent_id = ? AND cr.status IN ('upcoming','attended') LIMIT 1`,
+       JOIN classes c ON c.id = cr.class_id
+       WHERE cr.class_id = ? AND ch.parent_id = ? AND cr.status IN ('upcoming','attended') AND c.status = 'completed' LIMIT 1`,
       [hw.class_id, req.user.id]
     );
     if (!allowed.length) return res.status(403).json({ error: 'Forbidden' });
