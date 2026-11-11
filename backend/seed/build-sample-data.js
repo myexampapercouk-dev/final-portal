@@ -53,7 +53,7 @@ const sql = `-- Sample data: fresh demo users + 2 courses x 10 future classes.
 -- Run ONCE in phpMyAdmin (SQL tab) against the portal database.
 -- Demo password for all three logins: ${PASSWORD}
 
--- 1. Tables the app also creates by itself (safe if they already exist)
+-- 1. Tables/columns the app also creates by itself (safe if they already exist)
 CREATE TABLE IF NOT EXISTS homework_files (
   homework_id INT NOT NULL,
   kind VARCHAR(10) NOT NULL,
@@ -112,8 +112,8 @@ INSERT INTO class_materials (class_id, file_name, file_path)
 SELECT id, 'Class notes.pdf', '/uploads/materials/sample-material.pdf' FROM classes WHERE course_id IN (@c1, @c2);
 
 -- 8. Homework + answers on every class
-INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path)
-SELECT id, CONCAT(title, ' homework'), 'Homework.pdf', 'seed-homework.pdf', 'Answers.pdf', 'seed-answers.pdf'
+INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path, total_questions)
+SELECT id, CONCAT(title, ' homework'), 'Homework.pdf', 'seed-homework.pdf', 'Answers.pdf', 'seed-answers.pdf', 4
 FROM classes WHERE course_id IN (@c1, @c2);
 
 INSERT INTO homework_files (homework_id, kind, data)

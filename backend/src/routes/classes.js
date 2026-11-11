@@ -2,7 +2,7 @@ const express = require('express');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const uploadMaterials = require('../middleware/uploadClass');
-const { keepCopy } = require('../utils/homeworkFiles');
+const { keepCopy, ensureHomeworkSchema } = require('../utils/homeworkFiles');
 const { keepMaterialCopy } = require('../utils/materialFiles');
 
 const router = express.Router();
@@ -61,6 +61,11 @@ router.post('/', requireAuth, requireRole('admin'), (req, res, next) => {
     const hwFile = req.files?.homework?.[0];
     const answerFile = req.files?.answer?.[0];
     if (!hwFile) return res.status(400).json({ error: 'The homework PDF is required when adding a class' });
+    const totalQuestions = Number(req.body.total_questions);
+    if (!Number.isInteger(totalQuestions) || totalQuestions < 1) {
+      return res.status(400).json({ error: 'Enter the total number of questions in the homework (a whole number, 1 or more)' });
+    }
+    await ensureHomeworkSchema();
 
     await conn.beginTransaction();
     const [result] = await conn.query(
@@ -81,10 +86,10 @@ router.post('/', requireAuth, requireRole('admin'), (req, res, next) => {
     }
 
     const [hw] = await conn.query(
-      `INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path)
-       VALUES (?,?,?,?,?,?)`,
+      `INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path, total_questions)
+       VALUES (?,?,?,?,?,?,?)`,
       [classId, (req.body.homework_title || '').trim() || `${title} homework`, hwFile.originalname, hwFile.filename,
-       answerFile ? answerFile.originalname : null, answerFile ? answerFile.filename : null]
+       answerFile ? answerFile.originalname : null, answerFile ? answerFile.filename : null, totalQuestions]
     );
 
     await conn.commit();

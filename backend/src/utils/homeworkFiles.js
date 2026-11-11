@@ -30,4 +30,30 @@ async function keepCopy(homeworkId, kind, file) {
   }
 }
 
-module.exports = { ensureFilesTable, keepCopy };
+// homework.total_questions (required for new homework) and the parents' per-question feedback
+let schemaReady = null;
+function ensureHomeworkSchema() {
+  if (!schemaReady) {
+    schemaReady = (async () => {
+      const [cols] = await pool.query(
+        `SELECT COLUMN_NAME FROM information_schema.columns
+         WHERE table_schema = DATABASE() AND table_name = 'homework' AND column_name = 'total_questions'`
+      );
+      if (!cols.length) await pool.query('ALTER TABLE homework ADD COLUMN total_questions INT NULL');
+      await pool.query(
+        `CREATE TABLE IF NOT EXISTS homework_feedback (
+           id INT AUTO_INCREMENT PRIMARY KEY,
+           homework_id INT NOT NULL,
+           child_id INT NOT NULL,
+           parent_id INT NOT NULL,
+           question_no INT NOT NULL,
+           feedback TEXT NOT NULL,
+           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+         )`
+      );
+    })().catch((e) => { schemaReady = null; console.error('[HOMEWORK SCHEMA]', e.message); throw e; });
+  }
+  return schemaReady;
+}
+
+module.exports = { ensureFilesTable, ensureHomeworkSchema, keepCopy };

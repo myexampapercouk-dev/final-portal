@@ -4,7 +4,7 @@
 -- Run ONCE in phpMyAdmin (SQL tab) against the portal database.
 -- Demo password for all three logins: Welcome@2026
 
--- 1. Tables the app also creates by itself (safe if they already exist)
+-- 1. Tables/columns the app also creates by itself (safe if they already exist)
 CREATE TABLE IF NOT EXISTS homework_files (
   homework_id INT NOT NULL,
   kind VARCHAR(10) NOT NULL,
@@ -14,9 +14,9 @@ CREATE TABLE IF NOT EXISTS homework_files (
 
 -- 2. Fresh users (skipped if the email already exists)
 INSERT INTO users (role, name, email, phone, password_hash) VALUES
-  ('teacher', 'Demo Teacher',  'demo.teacher@myexampapers.co.uk', '07700900001', '$2a$10$eHNXNb0.RA5bk7wveqfOuOGsktX5.uLsKTPhNAXXpBNsGD8eXzx9C'),
-  ('parent',  'Demo Parent One', 'demo.parent1@myexampapers.co.uk', '07700900002', '$2a$10$eHNXNb0.RA5bk7wveqfOuOGsktX5.uLsKTPhNAXXpBNsGD8eXzx9C'),
-  ('parent',  'Demo Parent Two', 'demo.parent2@myexampapers.co.uk', '07700900003', '$2a$10$eHNXNb0.RA5bk7wveqfOuOGsktX5.uLsKTPhNAXXpBNsGD8eXzx9C')
+  ('teacher', 'Demo Teacher',  'demo.teacher@myexampapers.co.uk', '07700900001', '$2a$10$kkx1tLuQo3/5DBPovJ4iou3lxoUPR5708dqtvCquhzNH8t6cT1gwe'),
+  ('parent',  'Demo Parent One', 'demo.parent1@myexampapers.co.uk', '07700900002', '$2a$10$kkx1tLuQo3/5DBPovJ4iou3lxoUPR5708dqtvCquhzNH8t6cT1gwe'),
+  ('parent',  'Demo Parent Two', 'demo.parent2@myexampapers.co.uk', '07700900003', '$2a$10$kkx1tLuQo3/5DBPovJ4iou3lxoUPR5708dqtvCquhzNH8t6cT1gwe')
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
 SET @teacher := (SELECT id FROM users WHERE email = 'demo.teacher@myexampapers.co.uk');
@@ -63,8 +63,8 @@ INSERT INTO class_materials (class_id, file_name, file_path)
 SELECT id, 'Class notes.pdf', '/uploads/materials/sample-material.pdf' FROM classes WHERE course_id IN (@c1, @c2);
 
 -- 8. Homework + answers on every class
-INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path)
-SELECT id, CONCAT(title, ' homework'), 'Homework.pdf', 'seed-homework.pdf', 'Answers.pdf', 'seed-answers.pdf'
+INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path, total_questions)
+SELECT id, CONCAT(title, ' homework'), 'Homework.pdf', 'seed-homework.pdf', 'Answers.pdf', 'seed-answers.pdf', 4
 FROM classes WHERE course_id IN (@c1, @c2);
 
 INSERT INTO homework_files (homework_id, kind, data)

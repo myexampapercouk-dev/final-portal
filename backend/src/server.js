@@ -16,6 +16,7 @@ const homeworkRoutes = require('./routes/homework');
 const { restoreMissingMaterial } = require('./utils/materialFiles');
 const notificationsRoutes = require('./routes/notifications');
 const { ensureNotificationSchema } = require('./utils/notifications');
+const { ensureHomeworkSchema } = require('./utils/homeworkFiles');
 const { startFeedbackReminderJob } = require('./utils/feedbackReminders');
 const { startCategoryUpgradeJob } = require('./utils/categoryUpgrade');
 
@@ -71,6 +72,7 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Edu Portal API running on port ${PORT}`);
   ensureNotificationSchema();
+  ensureHomeworkSchema().catch(() => {});
   ensureSampleMaterial();
   startCategoryUpgradeJob();
   startFeedbackReminderJob();

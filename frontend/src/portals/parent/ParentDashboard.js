@@ -45,12 +45,12 @@ export default function ParentDashboard() {
       api.get('/homework', { params: { child_id: k.id } }).catch(() => ({ data: [] }))
     ]).then(([u, f, h]) => ({
       upcoming: u.data.map((r) => ({ ...r, child_name: k.name })),
-      feedback: f.data.map((r) => ({ ...r, child_name: k.name })),
-      homework: h.data.map((r) => ({ ...r, child_name: k.name }))
+      feedback: f.data.map((r) => ({ ...r, child_name: k.name, child_id: k.id })),
+      homework: h.data.map((r) => ({ ...r, child_name: k.name, child_id: k.id }))
     })))).then((results) => {
       setAllUpcoming(results.flatMap((r) => r.upcoming).sort((a, b) => new Date(a.timing) - new Date(b.timing)));
-      setAllFeedback(results.flatMap((r) => r.feedback).sort((a, b) => new Date(b.timing) - new Date(a.timing)).slice(0, 12));
-      setAllHomework(results.flatMap((r) => r.homework).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 12));
+      setAllFeedback(results.flatMap((r) => r.feedback).sort((a, b) => new Date(b.timing) - new Date(a.timing)));
+      setAllHomework(results.flatMap((r) => r.homework).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
     });
   }, [kids]);
 
@@ -70,6 +70,10 @@ export default function ParentDashboard() {
       setLoading(false);
     });
   }, [selectedChild]);
+
+  // Feedback and homework follow the child selected above
+  const childFeedback = allFeedback.filter((f) => selectedChild && f.child_id === selectedChild.id).slice(0, 12);
+  const childHomework = allHomework.filter((h) => selectedChild && h.child_id === selectedChild.id).slice(0, 12);
 
   const outstanding = invoices.filter((i) => i.status === 'unpaid').reduce((s, i) => s + Number(i.total_amount), 0);
 
@@ -150,11 +154,11 @@ export default function ParentDashboard() {
             </>
           )}
 
-          {allFeedback.length > 0 && (
+          {childFeedback.length > 0 && (
             <>
               <div style={{ fontFamily: P.headlineFont, fontSize: 18, color: P.navy, marginBottom: 8 }}>Latest Teacher Feedback</div>
               <Scroller>
-                {allFeedback.map((f) => (
+                {childFeedback.map((f) => (
                   <ScrollCard key={f.id} accent={P.green}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'center' }}>
                       <StudentTag name={f.child_name} />
@@ -170,11 +174,11 @@ export default function ParentDashboard() {
             </>
           )}
 
-          {allHomework.length > 0 && (
+          {childHomework.length > 0 && (
             <>
               <div style={{ fontFamily: P.headlineFont, fontSize: 18, color: P.navy, marginBottom: 8 }}>Latest Homework</div>
               <Scroller>
-                {allHomework.map((h) => (
+                {childHomework.map((h) => (
                   <ScrollCard key={`${h.id}-${h.child_name}`} accent={P.navy}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: P.gold, textTransform: 'uppercase' }}>
                       Set {new Date(h.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}

@@ -5,7 +5,8 @@ const pool = require('../config/db');
 const { notifyUser } = require('../utils/notifications');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { uploadHomework, homeworkDir } = require('../middleware/uploadHomework');
-const { ensureFilesTable, keepCopy } = require('../utils/homeworkFiles');
+const { ensureFilesTable, ensureHomeworkSchema, keepCopy } = require('../utils/homeworkFiles');
+const { notifyAdmin } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -15,15 +16,20 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
     if (err) return res.status(400).json({ error: err.message });
     try {
       const { class_id, title } = req.body;
+      const totalQuestions = Number(req.body.total_questions);
       const hw = req.files?.homework?.[0];
       const ans = req.files?.answer?.[0];
       if (!class_id || !title || !hw) {
         return res.status(400).json({ error: 'class_id, title and the homework PDF are required' });
       }
+      if (!Number.isInteger(totalQuestions) || totalQuestions < 1) {
+        return res.status(400).json({ error: 'Enter the total number of questions (a whole number, 1 or more)' });
+      }
+      await ensureHomeworkSchema();
       const [result] = await pool.query(
-        `INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path)
-         VALUES (?,?,?,?,?,?)`,
-        [class_id, title, hw.originalname, hw.filename, ans ? ans.originalname : null, ans ? ans.filename : null]
+        `INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path, total_questions)
+         VALUES (?,?,?,?,?,?,?)`,
+        [class_id, title, hw.originalname, hw.filename, ans ? ans.originalname : null, ans ? ans.filename : null, totalQuestions]
       );
       // Tell the parents of the children booked into this class
       try {
@@ -50,8 +56,9 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
 
 // ADMIN: list everything
 router.get('/all', requireAuth, requireRole('admin'), async (req, res) => {
+  await ensureHomeworkSchema();
   const [rows] = await pool.query(
-    `SELECT h.id, h.title, h.file_name, h.answer_file_name, h.created_at, c.title AS class_title, c.timing
+    `SELECT h.id, h.title, h.file_name, h.answer_file_name, h.created_at, h.total_questions, c.title AS class_title, c.timing
      FROM homework h JOIN classes c ON c.id = h.class_id
      ORDER BY h.created_at DESC, h.id DESC`
   );
@@ -72,10 +79,11 @@ router.delete('/:id', requireAuth, requireRole('admin'), async (req, res) => {
 // PARENT: homework for the classes a child is registered in, newest first
 router.get('/', requireAuth, requireRole('parent'), async (req, res) => {
   const { child_id } = req.query;
+  await ensureHomeworkSchema();
   const [child] = await pool.query('SELECT id FROM children WHERE id = ? AND parent_id = ?', [child_id, req.user.id]);
   if (!child.length) return res.status(403).json({ error: 'Not your child' });
   const [rows] = await pool.query(
-    `SELECT h.id, h.title, h.created_at, (h.answer_file_path IS NOT NULL) AS has_answer,
+    `SELECT h.id, h.title, h.created_at, h.total_questions, (h.answer_file_path IS NOT NULL) AS has_answer,
             c.title AS class_title, c.timing
      FROM homework h
      JOIN classes c ON c.id = h.class_id
@@ -85,6 +93,69 @@ router.get('/', requireAuth, requireRole('parent'), async (req, res) => {
     [child_id]
   );
   res.json(rows.map((r) => ({ ...r, has_answer: !!r.has_answer })));
+});
+
+// ADMIN: feedback parents have left on homework questions, newest first
+router.get('/feedback', requireAuth, requireRole('admin'), async (req, res) => {
+  await ensureHomeworkSchema();
+  const [rows] = await pool.query(
+    `SELECT f.id, f.question_no, f.feedback, f.created_at, h.id AS homework_id, h.title AS homework_title,
+            ch.name AS child_name, u.name AS parent_name
+     FROM homework_feedback f
+     JOIN homework h ON h.id = f.homework_id
+     JOIN children ch ON ch.id = f.child_id
+     JOIN users u ON u.id = f.parent_id
+     ORDER BY f.created_at DESC, f.id DESC LIMIT 200`
+  );
+  res.json(rows);
+});
+
+// PARENT: feedback on specific questions of a homework.
+// body: { child_id, items: [{ question: 3, feedback: '...' }, ...] }
+router.post('/:id/feedback', requireAuth, requireRole('parent'), async (req, res) => {
+  await ensureHomeworkSchema();
+  const { child_id, items } = req.body;
+  const [child] = await pool.query('SELECT id, name FROM children WHERE id = ? AND parent_id = ?', [child_id, req.user.id]);
+  if (!child.length) return res.status(403).json({ error: 'Not your child' });
+
+  const [rows] = await pool.query('SELECT * FROM homework WHERE id = ?', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Homework not found' });
+  const hw = rows[0];
+  const [booked] = await pool.query(
+    `SELECT id FROM class_registrations WHERE class_id = ? AND child_id = ? AND status IN ('upcoming','attended') LIMIT 1`,
+    [hw.class_id, child_id]
+  );
+  if (!booked.length) return res.status(403).json({ error: 'This homework is not for your child' });
+
+  if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'Choose at least one question' });
+  const clean = [];
+  for (const it of items) {
+    const q = Number(it.question);
+    const text = String(it.feedback || '').trim();
+    if (!Number.isInteger(q) || q < 1 || (hw.total_questions && q > hw.total_questions)) {
+      return res.status(400).json({ error: 'Invalid question number' });
+    }
+    if (!text) return res.status(400).json({ error: `Write your feedback for question ${q}` });
+    clean.push([q, text.slice(0, 2000)]);
+  }
+  for (const [q, text] of clean) {
+    await pool.query(
+      'INSERT INTO homework_feedback (homework_id, child_id, parent_id, question_no, feedback) VALUES (?,?,?,?,?)',
+      [hw.id, child_id, req.user.id, q, text]
+    );
+  }
+  try {
+    await notifyAdmin({
+      type: 'homework_feedback',
+      title: `Homework feedback: ${hw.title}`,
+      body: `${req.user.name} left feedback on ${clean.length} question${clean.length === 1 ? '' : 's'} for ${child[0].name}.`,
+      link: '/admin/homework',
+      refId: hw.id
+    });
+  } catch (e) {
+    console.error('[HOMEWORK FEEDBACK NOTIFY FAILED]', e.message);
+  }
+  res.status(201).json({ success: true, saved: clean.length });
 });
 
 // View-only PDF stream. kind = 'homework' | 'answer'.

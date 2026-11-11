@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import ParentShell from './ParentShell';
 import ChildPills from './ChildPills';
+import HomeworkFeedbackModal from './HomeworkFeedbackModal';
 import { useParent } from './ParentContext';
 import { P, cardStyle, btn } from './theme';
 
@@ -10,6 +11,7 @@ export default function Homework() {
   const { selectedChild } = useParent();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [feedbackFor, setFeedbackFor] = useState(null); // homework the popup is open for
 
   useEffect(() => {
     if (!selectedChild) { setItems([]); setLoading(false); return; }
@@ -37,16 +39,23 @@ export default function Homework() {
             <div style={{ fontWeight: 600, color: P.navy, fontFamily: P.headlineFont, fontSize: 16 }}>{h.title}</div>
             <div style={{ fontSize: 12.5, color: P.meta, marginTop: 2 }}>
               {h.class_title} · set {new Date(h.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}
+              {h.total_questions ? ` · ${h.total_questions} question${h.total_questions === 1 ? '' : 's'}` : ''}
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
               <a href={`/parent/view/${h.id}/homework`} target="_blank" rel="noopener noreferrer" style={btn('navy')}>View homework</a>
               {h.has_answer && (
                 <a href={`/parent/view/${h.id}/answer`} target="_blank" rel="noopener noreferrer" style={btn('secondary')}>View answers</a>
               )}
+              {h.total_questions > 0 && (
+                <button type="button" onClick={() => setFeedbackFor(h)} style={btn('gold')}>Give feedback</button>
+              )}
             </div>
           </div>
         ))}
       </div>
+      {feedbackFor && selectedChild && (
+        <HomeworkFeedbackModal homework={feedbackFor} child={selectedChild} onClose={() => setFeedbackFor(null)} />
+      )}
     </ParentShell>
   );
 }
