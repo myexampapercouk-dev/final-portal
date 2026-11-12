@@ -5,7 +5,7 @@ const pool = require('../config/db');
 const { notifyUser } = require('../utils/notifications');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { uploadHomework, homeworkDir } = require('../middleware/uploadHomework');
-const { ensureFilesTable, ensureHomeworkSchema, keepCopy, cleanQuestions } = require('../utils/homeworkFiles');
+const { ensureFilesTable, ensureHomeworkSchema, keepCopy, resolveQuestions } = require('../utils/homeworkFiles');
 const { notifyAdmin } = require('../utils/notifications');
 
 const router = express.Router();
@@ -16,20 +16,17 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
     if (err) return res.status(400).json({ error: err.message });
     try {
       const { class_id, title } = req.body;
-      const totalQuestions = Number(req.body.total_questions);
+      const { total: totalQuestions, questions: questionsJson } = resolveQuestions(req.body);
       const hw = req.files?.homework?.[0];
       const ans = req.files?.answer?.[0];
       if (!class_id || !title || !hw) {
         return res.status(400).json({ error: 'class_id, title and the homework PDF are required' });
       }
-      if (!Number.isInteger(totalQuestions) || totalQuestions < 1) {
-        return res.status(400).json({ error: 'Enter the total number of questions (a whole number, 1 or more)' });
-      }
       await ensureHomeworkSchema();
       const [result] = await pool.query(
         `INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path, total_questions, questions)
          VALUES (?,?,?,?,?,?,?,?)`,
-        [class_id, title, hw.originalname, hw.filename, ans ? ans.originalname : null, ans ? ans.filename : null, totalQuestions, cleanQuestions(req.body.questions, totalQuestions)]
+        [class_id, title, hw.originalname, hw.filename, ans ? ans.originalname : null, ans ? ans.filename : null, totalQuestions, questionsJson]
       );
       // Parents only see homework once the class is completed. If it already is, tell them now;
       // otherwise they are told when the teacher completes the class.

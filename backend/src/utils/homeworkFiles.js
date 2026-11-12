@@ -76,4 +76,19 @@ function cleanQuestions(raw, total) {
   }
 }
 
-module.exports = { ensureFilesTable, ensureHomeworkSchema, keepCopy, cleanQuestions };
+// The question count is optional. Use the number given; if there is none, use how many question
+// texts came from the PDF; if neither, save the homework without a count.
+function resolveQuestions(body) {
+  let total = Number(body.total_questions);
+  if (!Number.isInteger(total) || total < 1) {
+    try {
+      const list = JSON.parse(body.questions);
+      total = Array.isArray(list) && list.length ? list.length : null;
+    } catch (e) {
+      total = null;
+    }
+  }
+  return { total, questions: total ? cleanQuestions(body.questions, total) : null };
+}
+
+module.exports = { ensureFilesTable, ensureHomeworkSchema, keepCopy, cleanQuestions, resolveQuestions };

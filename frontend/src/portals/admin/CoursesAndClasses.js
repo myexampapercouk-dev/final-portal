@@ -95,8 +95,8 @@ export default function CoursesAndClasses() {
       materialFiles.filter(Boolean).forEach((file) => fd.append('materials', file));
       fd.append('homework', homeworkFile);
       fd.append('total_questions', classForm.total_questions);
-      // the question texts are only sent when they match the number entered
-      if (pdfQuestions.length === Number(classForm.total_questions)) fd.append('questions', JSON.stringify(pdfQuestions.map(({ section, text }) => ({ section, text }))));
+      // the question texts are only sent when they match the number (a blank number means "use the PDF's")
+      if (pdfQuestions.length && (!classForm.total_questions || pdfQuestions.length === Number(classForm.total_questions))) fd.append('questions', JSON.stringify(pdfQuestions.map(({ section, text }) => ({ section, text }))));
       if (answerFile) fd.append('answer', answerFile);
 
       await api.post('/classes', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -218,8 +218,8 @@ export default function CoursesAndClasses() {
 
         <label style={labelStyle}>Homework PDF (required)</label>
         <input key={'hw' + fileKey} required type="file" accept="application/pdf" style={{ marginTop: 6, display: 'block' }} onChange={(e) => pickHomework(e.target.files[0] || null)} />
-        <label style={labelStyle}>Total questions in the homework (required)</label>
-        <input required type="number" min="1" step="1" value={classForm.total_questions} onChange={(e) => setClassForm((f) => ({ ...f, total_questions: e.target.value }))} placeholder="e.g. 10" style={inputStyle} />
+        <label style={labelStyle}>Total questions (optional - filled in from the PDF)</label>
+        <input type="number" min="1" step="1" value={classForm.total_questions} onChange={(e) => setClassForm((f) => ({ ...f, total_questions: e.target.value }))} placeholder="e.g. 10" style={inputStyle} />
         {countNote && <p style={{ fontSize: 12, color: A.meta, margin: '4px 0 0' }}>{countNote}</p>}
         <label style={labelStyle}>Answers PDF (optional)</label>
         <input key={'ans' + fileKey} type="file" accept="application/pdf" style={{ marginTop: 6, display: 'block' }} onChange={(e) => setAnswerFile(e.target.files[0] || null)} />

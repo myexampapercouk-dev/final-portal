@@ -56,8 +56,8 @@ export default function AdminHomework() {
       fd.append('class_id', form.class_id);
       fd.append('title', form.title);
       fd.append('total_questions', form.total_questions);
-      // the question texts are only sent when they match the number entered
-      if (pdfQuestions.length === Number(form.total_questions)) fd.append('questions', JSON.stringify(pdfQuestions.map(({ section, text }) => ({ section, text }))));
+      // the question texts are only sent when they match the number (a blank number means "use the PDF's")
+      if (pdfQuestions.length && (!form.total_questions || pdfQuestions.length === Number(form.total_questions))) fd.append('questions', JSON.stringify(pdfQuestions.map(({ section, text }) => ({ section, text }))));
       fd.append('homework', homeworkFile);
       if (answerFile) fd.append('answer', answerFile);
       await api.post('/homework', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -98,8 +98,8 @@ export default function AdminHomework() {
         </select>
         <label style={labelStyle}>Title</label>
         <input required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} style={inputStyle} />
-        <label style={labelStyle}>Total questions (required)</label>
-        <input required type="number" min="1" step="1" value={form.total_questions} onChange={(e) => setForm((f) => ({ ...f, total_questions: e.target.value }))} placeholder="e.g. 10" style={inputStyle} />
+        <label style={labelStyle}>Total questions (optional - filled in from the PDF)</label>
+        <input type="number" min="1" step="1" value={form.total_questions} onChange={(e) => setForm((f) => ({ ...f, total_questions: e.target.value }))} placeholder="e.g. 10" style={inputStyle} />
         {countNote && <p style={{ fontSize: 12, color: A.meta, margin: '4px 0 0' }}>{countNote}</p>}
         <label style={labelStyle}>Homework PDF</label>
         <input key={`h${fileKey}`} type="file" accept="application/pdf" onChange={(e) => pickHomework(e.target.files[0] || null)} />
