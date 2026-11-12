@@ -165,7 +165,9 @@ export default function ClassDetail() {
       await load();
       setTimeout(() => navigate('/teacher'), 1500);
     } catch (err) {
-      setSubmitMsg(err.response?.data?.error || 'Could not submit feedback');
+      const data = err.response?.data;
+      const names = Array.isArray(data?.missing) && data.missing.length ? ` Still missing a remark: ${data.missing.join(', ')}. Add a remark for them, or untick them as present on the register.` : '';
+      setSubmitMsg((data?.error || 'Could not submit feedback') + names);
     } finally {
       setSubmitting(false);
     }
