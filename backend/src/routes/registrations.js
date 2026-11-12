@@ -300,7 +300,7 @@ router.post('/class/:classId/submit-feedback', requireAuth, requireRole('teacher
      FROM class_registrations cr
      JOIN children ch ON ch.id = cr.child_id
      LEFT JOIN users u ON u.id = ch.parent_id
-     WHERE cr.class_id = ? AND cr.present = 1`,
+     WHERE cr.class_id = ? AND cr.present = 1 AND cr.status <> 'cancelled'`,
     [req.params.classId]
   );
   if (!present.length) return res.status(400).json({ error: 'No students marked present' });

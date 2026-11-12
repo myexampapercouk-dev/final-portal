@@ -155,7 +155,7 @@ router.get('/classes/:id/feedback-review', async (req, res) => {
      FROM class_registrations cr
      JOIN children ch ON ch.id = cr.child_id
      LEFT JOIN users u ON u.id = ch.parent_id
-     WHERE cr.class_id = ? AND cr.present = 1
+     WHERE cr.class_id = ? AND cr.present = 1 AND cr.status <> 'cancelled'
      ORDER BY ch.name`,
     [req.params.id]
   );
@@ -200,7 +200,7 @@ router.post('/classes/:id/approve-feedback', async (req, res) => {
      FROM class_registrations cr
      JOIN children ch ON ch.id = cr.child_id
      JOIN users u ON u.id = ch.parent_id
-     WHERE cr.class_id = ? AND cr.present = 1`,
+     WHERE cr.class_id = ? AND cr.present = 1 AND cr.status <> 'cancelled'`,
     [req.params.id]
   );
   for (const r of recipients) {
