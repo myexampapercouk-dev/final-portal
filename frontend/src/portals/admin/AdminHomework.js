@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import AdminShell from './AdminShell';
-import countPdfQuestions from '../../utils/countPdfQuestions';
+import readPdfQuestions from '../../utils/countPdfQuestions';
 import { A, cardStyle, btn, labelStyle, inputStyle, thStyle, tdStyle } from './theme';
 
 export default function AdminHomework() {
@@ -15,6 +15,7 @@ export default function AdminHomework() {
   const [busy, setBusy] = useState(false);
   const [fileKey, setFileKey] = useState(0); // resets the file inputs after saving
   const [countNote, setCountNote] = useState('');
+  const [pdfQuestions, setPdfQuestions] = useState([]); // question texts read from the homework PDF
 
   const load = () => {
     api.get('/homework/all').then(({ data }) => setItems(data));
@@ -29,9 +30,11 @@ export default function AdminHomework() {
   async function pickHomework(file) {
     setHomeworkFile(file);
     setCountNote('');
+    setPdfQuestions([]);
     if (!file) return;
     try {
-      const n = await countPdfQuestions(file);
+      const { count: n, questions } = await readPdfQuestions(file);
+      setPdfQuestions(questions);
       if (n > 0) {
         setForm((f) => ({ ...f, total_questions: String(n) }));
         setCountNote(`Read from the PDF: ${n} question${n === 1 ? '' : 's'}. Change it if this is not right.`);
@@ -53,6 +56,8 @@ export default function AdminHomework() {
       fd.append('class_id', form.class_id);
       fd.append('title', form.title);
       fd.append('total_questions', form.total_questions);
+      // the question texts are only sent when they match the number entered
+      if (pdfQuestions.length === Number(form.total_questions)) fd.append('questions', JSON.stringify(pdfQuestions.map(({ section, text }) => ({ section, text }))));
       fd.append('homework', homeworkFile);
       if (answerFile) fd.append('answer', answerFile);
       await api.post('/homework', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -60,6 +65,7 @@ export default function AdminHomework() {
       setHomeworkFile(null);
       setAnswerFile(null);
       setCountNote('');
+      setPdfQuestions([]);
       setFileKey((k) => k + 1);
       load();
     } catch (err) {

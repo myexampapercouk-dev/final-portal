@@ -40,6 +40,11 @@ function ensureHomeworkSchema() {
          WHERE table_schema = DATABASE() AND table_name = 'homework' AND column_name = 'total_questions'`
       );
       if (!cols.length) await pool.query('ALTER TABLE homework ADD COLUMN total_questions INT NULL');
+      const [qcols] = await pool.query(
+        `SELECT COLUMN_NAME FROM information_schema.columns
+         WHERE table_schema = DATABASE() AND table_name = 'homework' AND column_name = 'questions'`
+      );
+      if (!qcols.length) await pool.query('ALTER TABLE homework ADD COLUMN questions TEXT NULL');
       await pool.query(
         `CREATE TABLE IF NOT EXISTS homework_feedback (
            id INT AUTO_INCREMENT PRIMARY KEY,
@@ -56,4 +61,19 @@ function ensureHomeworkSchema() {
   return schemaReady;
 }
 
-module.exports = { ensureFilesTable, ensureHomeworkSchema, keepCopy };
+// The question texts read from the PDF arrive as a JSON string; keep only a clean, bounded list.
+// Returns a JSON string, or null when there is nothing usable (the popup then says "Question N").
+function cleanQuestions(raw, total) {
+  try {
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list) || list.length !== total || list.length > 300) return null;
+    return JSON.stringify(list.map((q) => ({
+      section: String((q && q.section) || '').slice(0, 60),
+      text: String((q && q.text) || '').slice(0, 160)
+    })));
+  } catch (e) {
+    return null;
+  }
+}
+
+module.exports = { ensureFilesTable, ensureHomeworkSchema, keepCopy, cleanQuestions };

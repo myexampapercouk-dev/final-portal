@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { FILE_BASE_URL } from '../../api/axios';
 import AdminShell from './AdminShell';
-import countPdfQuestions from '../../utils/countPdfQuestions';
+import readPdfQuestions from '../../utils/countPdfQuestions';
 import { A, cardStyle, btn, labelStyle, inputStyle, badge, thStyle, tdStyle } from './theme';
 
 const CATEGORIES = ['7+', '8+', '9+', '10+', '11+', '13+'];
@@ -19,6 +19,7 @@ export default function CoursesAndClasses() {
   const [answerFile, setAnswerFile] = useState(null); // optional
   const [fileKey, setFileKey] = useState(0); // remounts the file inputs after a save
   const [countNote, setCountNote] = useState('');
+  const [pdfQuestions, setPdfQuestions] = useState([]); // question texts read from the homework PDF
   const [error, setError] = useState('');
   const [expandedCourseId, setExpandedCourseId] = useState(null);
 
@@ -61,9 +62,11 @@ export default function CoursesAndClasses() {
   async function pickHomework(file) {
     setHomeworkFile(file);
     setCountNote('');
+    setPdfQuestions([]);
     if (!file) return;
     try {
-      const n = await countPdfQuestions(file);
+      const { count: n, questions } = await readPdfQuestions(file);
+      setPdfQuestions(questions);
       if (n > 0) {
         setClassForm((f) => ({ ...f, total_questions: String(n) }));
         setCountNote(`Read from the PDF: ${n} question${n === 1 ? '' : 's'}. Change it if this is not right.`);
@@ -92,6 +95,8 @@ export default function CoursesAndClasses() {
       materialFiles.filter(Boolean).forEach((file) => fd.append('materials', file));
       fd.append('homework', homeworkFile);
       fd.append('total_questions', classForm.total_questions);
+      // the question texts are only sent when they match the number entered
+      if (pdfQuestions.length === Number(classForm.total_questions)) fd.append('questions', JSON.stringify(pdfQuestions.map(({ section, text }) => ({ section, text }))));
       if (answerFile) fd.append('answer', answerFile);
 
       await api.post('/classes', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -100,6 +105,7 @@ export default function CoursesAndClasses() {
       setHomeworkFile(null);
       setAnswerFile(null);
       setCountNote('');
+      setPdfQuestions([]);
       setFileKey((k) => k + 1);
       loadAll();
     } catch (err) {

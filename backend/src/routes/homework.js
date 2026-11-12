@@ -5,7 +5,7 @@ const pool = require('../config/db');
 const { notifyUser } = require('../utils/notifications');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { uploadHomework, homeworkDir } = require('../middleware/uploadHomework');
-const { ensureFilesTable, ensureHomeworkSchema, keepCopy } = require('../utils/homeworkFiles');
+const { ensureFilesTable, ensureHomeworkSchema, keepCopy, cleanQuestions } = require('../utils/homeworkFiles');
 const { notifyAdmin } = require('../utils/notifications');
 
 const router = express.Router();
@@ -27,9 +27,9 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
       }
       await ensureHomeworkSchema();
       const [result] = await pool.query(
-        `INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path, total_questions)
-         VALUES (?,?,?,?,?,?,?)`,
-        [class_id, title, hw.originalname, hw.filename, ans ? ans.originalname : null, ans ? ans.filename : null, totalQuestions]
+        `INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path, total_questions, questions)
+         VALUES (?,?,?,?,?,?,?,?)`,
+        [class_id, title, hw.originalname, hw.filename, ans ? ans.originalname : null, ans ? ans.filename : null, totalQuestions, cleanQuestions(req.body.questions, totalQuestions)]
       );
       // Parents only see homework once the class is completed. If it already is, tell them now;
       // otherwise they are told when the teacher completes the class.
@@ -85,7 +85,7 @@ router.get('/', requireAuth, requireRole('parent'), async (req, res) => {
   const [child] = await pool.query('SELECT id FROM children WHERE id = ? AND parent_id = ?', [child_id, req.user.id]);
   if (!child.length) return res.status(403).json({ error: 'Not your child' });
   const [rows] = await pool.query(
-    `SELECT h.id, h.title, h.created_at, h.total_questions, (h.answer_file_path IS NOT NULL) AS has_answer,
+    `SELECT h.id, h.title, h.created_at, h.total_questions, h.questions, (h.answer_file_path IS NOT NULL) AS has_answer,
             c.title AS class_title, c.timing
      FROM homework h
      JOIN classes c ON c.id = h.class_id
@@ -94,7 +94,11 @@ router.get('/', requireAuth, requireRole('parent'), async (req, res) => {
      ORDER BY h.created_at DESC, h.id DESC`,
     [child_id]
   );
-  res.json(rows.map((r) => ({ ...r, has_answer: !!r.has_answer })));
+  res.json(rows.map((r) => {
+    let questions = null;
+    try { questions = r.questions ? JSON.parse(r.questions) : null; } catch (e) { /* none */ }
+    return { ...r, questions, has_answer: !!r.has_answer };
+  }));
 });
 
 // ADMIN: feedback parents have left on homework questions, newest first

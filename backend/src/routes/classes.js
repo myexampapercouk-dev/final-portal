@@ -2,7 +2,7 @@ const express = require('express');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const uploadMaterials = require('../middleware/uploadClass');
-const { keepCopy, ensureHomeworkSchema } = require('../utils/homeworkFiles');
+const { keepCopy, ensureHomeworkSchema, cleanQuestions } = require('../utils/homeworkFiles');
 const { keepMaterialCopy } = require('../utils/materialFiles');
 
 const router = express.Router();
@@ -86,10 +86,11 @@ router.post('/', requireAuth, requireRole('admin'), (req, res, next) => {
     }
 
     const [hw] = await conn.query(
-      `INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path, total_questions)
-       VALUES (?,?,?,?,?,?,?)`,
+      `INSERT INTO homework (class_id, title, file_name, file_path, answer_file_name, answer_file_path, total_questions, questions)
+       VALUES (?,?,?,?,?,?,?,?)`,
       [classId, (req.body.homework_title || '').trim() || `${title} homework`, hwFile.originalname, hwFile.filename,
-       answerFile ? answerFile.originalname : null, answerFile ? answerFile.filename : null, totalQuestions]
+       answerFile ? answerFile.originalname : null, answerFile ? answerFile.filename : null, totalQuestions,
+       cleanQuestions(req.body.questions, totalQuestions)]
     );
 
     await conn.commit();
