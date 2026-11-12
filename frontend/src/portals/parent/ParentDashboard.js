@@ -44,7 +44,7 @@ export default function ParentDashboard() {
       api.get(`/registrations/child/${k.id}/feedback`),
       api.get('/homework', { params: { child_id: k.id } }).catch(() => ({ data: [] }))
     ]).then(([u, f, h]) => ({
-      upcoming: u.data.map((r) => ({ ...r, child_name: k.name })),
+      upcoming: u.data.map((r) => ({ ...r, child_name: k.name, child_id: k.id })),
       feedback: f.data.map((r) => ({ ...r, child_name: k.name, child_id: k.id })),
       homework: h.data.map((r) => ({ ...r, child_name: k.name, child_id: k.id }))
     })))).then((results) => {
@@ -71,7 +71,8 @@ export default function ParentDashboard() {
     });
   }, [selectedChild]);
 
-  // Feedback and homework follow the child selected above
+  // Upcoming classes, feedback and homework follow the child selected above
+  const childUpcoming = allUpcoming.filter((r) => selectedChild && r.child_id === selectedChild.id);
   const childFeedback = allFeedback.filter((f) => selectedChild && f.child_id === selectedChild.id).slice(0, 12);
   const childHomework = allHomework.filter((h) => selectedChild && h.child_id === selectedChild.id).slice(0, 12);
 
@@ -133,11 +134,11 @@ export default function ParentDashboard() {
             </div>
           </Link>
 
-          {allUpcoming.length > 0 && (
+          {childUpcoming.length > 0 && (
             <>
               <div style={{ fontFamily: P.headlineFont, fontSize: 18, color: P.navy, marginBottom: 8 }}>Upcoming Classes</div>
               <Scroller>
-                {allUpcoming.map((r) => (
+                {childUpcoming.map((r) => (
                   <ScrollCard key={r.id}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: P.gold, textTransform: 'uppercase' }}>
                       {new Date(r.timing).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
