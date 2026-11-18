@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import AdminShell from './AdminShell';
-import readPdfQuestions from '../../utils/countPdfQuestions';
 import { A, cardStyle, btn, labelStyle, inputStyle, thStyle, tdStyle } from './theme';
 
 export default function AdminHomework() {
@@ -14,8 +13,6 @@ export default function AdminHomework() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [fileKey, setFileKey] = useState(0); // resets the file inputs after saving
-  const [countNote, setCountNote] = useState('');
-  const [pdfQuestions, setPdfQuestions] = useState([]); // question texts read from the homework PDF
 
   const load = () => {
     api.get('/homework/all').then(({ data }) => setItems(data));
@@ -25,26 +22,6 @@ export default function AdminHomework() {
     load();
     api.get('/classes').then(({ data }) => setClasses(data));
   }, []);
-
-  // Read the question count from the chosen PDF and fill it in (still editable)
-  async function pickHomework(file) {
-    setHomeworkFile(file);
-    setCountNote('');
-    setPdfQuestions([]);
-    if (!file) return;
-    try {
-      const { count: n, questions } = await readPdfQuestions(file);
-      setPdfQuestions(questions);
-      if (n > 0) {
-        setForm((f) => ({ ...f, total_questions: String(n) }));
-        setCountNote(`Read from the PDF: ${n} question${n === 1 ? '' : 's'}. Change it if this is not right.`);
-      } else {
-        setCountNote('Could not find numbered questions in this PDF - please type the number.');
-      }
-    } catch (e) {
-      setCountNote('Could not read this PDF - please type the number of questions.');
-    }
-  }
 
   async function submit(e) {
     e.preventDefault();
@@ -56,16 +33,12 @@ export default function AdminHomework() {
       fd.append('class_id', form.class_id);
       fd.append('title', form.title);
       fd.append('total_questions', form.total_questions);
-      // the question texts are only sent when they match the number (a blank number means "use the PDF's")
-      if (pdfQuestions.length && (!form.total_questions || pdfQuestions.length === Number(form.total_questions))) fd.append('questions', JSON.stringify(pdfQuestions.map(({ section, text }) => ({ section, text }))));
       fd.append('homework', homeworkFile);
       if (answerFile) fd.append('answer', answerFile);
       await api.post('/homework', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       setForm({ class_id: '', title: '', total_questions: '' });
       setHomeworkFile(null);
       setAnswerFile(null);
-      setCountNote('');
-      setPdfQuestions([]);
       setFileKey((k) => k + 1);
       load();
     } catch (err) {
@@ -98,11 +71,10 @@ export default function AdminHomework() {
         </select>
         <label style={labelStyle}>Title</label>
         <input required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} style={inputStyle} />
-        <label style={labelStyle}>Total questions (optional - filled in from the PDF)</label>
-        <input type="number" min="1" step="1" value={form.total_questions} onChange={(e) => setForm((f) => ({ ...f, total_questions: e.target.value }))} placeholder="e.g. 10" style={inputStyle} />
-        {countNote && <p style={{ fontSize: 12, color: A.meta, margin: '4px 0 0' }}>{countNote}</p>}
+        <label style={labelStyle}>Total number of questions (required)</label>
+        <input required type="number" min="1" step="1" value={form.total_questions} onChange={(e) => setForm((f) => ({ ...f, total_questions: e.target.value }))} placeholder="e.g. 10" style={inputStyle} />
         <label style={labelStyle}>Homework PDF</label>
-        <input key={`h${fileKey}`} type="file" accept="application/pdf" onChange={(e) => pickHomework(e.target.files[0] || null)} />
+        <input key={`h${fileKey}`} type="file" accept="application/pdf" onChange={(e) => setHomeworkFile(e.target.files[0] || null)} />
         <label style={labelStyle}>Answers PDF (optional)</label>
         <input key={`a${fileKey}`} type="file" accept="application/pdf" onChange={(e) => setAnswerFile(e.target.files[0] || null)} />
         {error && <div style={{ color: A.red, fontSize: 12.5, background: A.redWash, padding: '8px 12px', borderRadius: 8, marginTop: 10 }}>{error}</div>}

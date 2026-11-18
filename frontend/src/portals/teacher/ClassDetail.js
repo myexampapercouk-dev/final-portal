@@ -7,6 +7,10 @@ import { T, btn } from './theme';
 const SUBJECTS = ['Maths', 'English', 'Reasoning', 'Behaviour'];
 const TABS = ['Register', 'Feedback', 'Materials'];
 
+// A remark must be at least this many words
+const MIN_WORDS = 35;
+const wordCount = (t) => String(t || '').trim().split(/\s+/).filter(Boolean).length;
+
 export default function ClassDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -97,6 +101,7 @@ export default function ClassDetail() {
   }
 
   async function saveEditedFeedback() {
+    if (wordCount(editingFb.content) < MIN_WORDS) { alert(`Each remark needs at least ${MIN_WORDS} words (this one has ${wordCount(editingFb.content)}).`); return; }
     try {
       await api.put('/registrations/feedback/' + editingFb.id, { content: editingFb.content });
       setEditingFb(null);
@@ -115,6 +120,7 @@ export default function ClassDetail() {
     const key = `${activeStudent}:${activeSubject}`;
     const content = feedbackDraft[key];
     if (!content) return;
+    if (wordCount(content) < MIN_WORDS) { alert(`Each remark needs at least ${MIN_WORDS} words (this one has ${wordCount(content)}).`); return; }
     await submitFeedback(activeStudent, activeSubject, content);
     setFeedbackDraft((d) => ({ ...d, [key]: '' }));
     load();
@@ -128,6 +134,10 @@ export default function ClassDetail() {
     setBulkMsg('');
     if (!bulkStudents.length || !bulkSubjects.length || !bulkRemark.trim()) {
       setBulkMsg('Pick at least one student, one subject, and write a remark.');
+      return;
+    }
+    if (wordCount(bulkRemark) < MIN_WORDS) {
+      setBulkMsg(`Each remark needs at least ${MIN_WORDS} words (this one has ${wordCount(bulkRemark)}).`);
       return;
     }
     const jobs = [];
@@ -355,6 +365,7 @@ export default function ClassDetail() {
                   onChange={(e) => setBulkRemark(e.target.value)}
                   style={{ ...styles.input, resize: 'vertical' }}
                 />
+                <div style={{ fontSize: 12, marginTop: 4, color: wordCount(bulkRemark) >= MIN_WORDS ? T.green : T.meta }}>{wordCount(bulkRemark)} / {MIN_WORDS} words minimum</div>
 
                 {bulkMsg && (
                   <div style={{
@@ -430,6 +441,10 @@ export default function ClassDetail() {
                       onChange={(e) => setFeedbackDraft((d) => ({ ...d, [`${activeReg.registration_id}:${activeSubject}`]: e.target.value }))}
                       style={{ ...styles.input, resize: 'vertical' }}
                     />
+                    {(() => {
+                      const n = wordCount(feedbackDraft[`${activeReg.registration_id}:${activeSubject}`]);
+                      return <div style={{ fontSize: 12, marginTop: 4, color: n >= MIN_WORDS ? T.green : T.meta }}>{n} / {MIN_WORDS} words minimum</div>;
+                    })()}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
                       <button style={btn('secondary')} onClick={submitSingleFeedback}>
                         + Add another subject remark

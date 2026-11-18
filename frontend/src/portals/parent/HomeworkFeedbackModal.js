@@ -14,6 +14,7 @@ export default function HomeworkFeedbackModal({ homework, child, onClose }) {
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
 
+  const selectAll = () => setPicked((p) => (p.length === total ? [] : Array.from({ length: total }, (_, i) => i + 1)));
   const toggle = (q) => setPicked((p) => (p.includes(q) ? p.filter((x) => x !== q) : [...p, q].sort((a, b) => a - b)));
   const info = (q) => (texts ? texts[q - 1] : null);
 
@@ -66,6 +67,10 @@ export default function HomeworkFeedbackModal({ homework, child, onClose }) {
             </button>
             {menuOpen && (
               <div style={styles.menu}>
+                <label style={{ ...styles.option, fontWeight: 600 }}>
+                  <input type="checkbox" checked={picked.length === total} onChange={selectAll} style={{ width: 'auto', margin: '3px 0 0', flexShrink: 0 }} />
+                  Select all questions
+                </label>
                 {Array.from({ length: total }, (_, i) => i + 1).map((q) => {
                   const d = info(q);
                   return (

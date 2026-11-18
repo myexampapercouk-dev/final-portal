@@ -2,6 +2,7 @@ const express = require('express');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { notifyAdmin, notifyUser } = require('../utils/notifications');
+const { remarkTooShort, remarkError } = require('../utils/words');
 const { sendClassCompletedEmail } = require('../utils/mailer');
 const { startApprovalClock } = require('../utils/feedbackReminders');
 
@@ -182,6 +183,7 @@ router.post('/class/:classId/attendance', requireAuth, requireRole('teacher'), a
 // ---------------------------------------------------------------
 router.post('/:registrationId/feedback', requireAuth, requireRole('teacher'), async (req, res) => {
   const { content, subject } = req.body;
+  if (remarkTooShort(content)) return res.status(400).json({ error: remarkError(content) });
   const [rows] = await pool.query(
     `SELECT cr.*, c.teacher_id FROM class_registrations cr
      JOIN classes c ON c.id = cr.class_id WHERE cr.id = ?`,
@@ -237,6 +239,7 @@ router.post('/class/:classId/complete', requireAuth, requireRole('teacher'), asy
 router.put('/feedback/:id', requireAuth, requireRole('teacher'), async (req, res) => {
   const { content } = req.body;
   if (!content || !content.trim()) return res.status(400).json({ error: 'content is required' });
+  if (remarkTooShort(content)) return res.status(400).json({ error: remarkError(content) });
   const [rows] = await pool.query(
     `SELECT f.id, f.teacher_id, c.feedback_status
      FROM feedback f

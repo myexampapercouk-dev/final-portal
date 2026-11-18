@@ -17,6 +17,9 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
     try {
       const { class_id, title } = req.body;
       const { total: totalQuestions, questions: questionsJson } = resolveQuestions(req.body);
+      if (!totalQuestions) {
+        return res.status(400).json({ error: 'Enter the total number of questions in the homework (a whole number, 1 or more)' });
+      }
       const hw = req.files?.homework?.[0];
       const ans = req.files?.answer?.[0];
       if (!class_id || !title || !hw) {
@@ -185,7 +188,7 @@ router.get('/:id/file/:kind', requireAuth, requireRole('parent', 'admin', 'teach
   const full = path.join(homeworkDir, path.basename(stored));
   const headers = {
     'Content-Type': 'application/pdf',
-    'Content-Disposition': 'inline',
+    'Content-Disposition': req.query.download ? 'attachment; filename="homework.pdf"' : 'inline',
     'Cache-Control': 'no-store, max-age=0',
     'X-Content-Type-Options': 'nosniff'
   };

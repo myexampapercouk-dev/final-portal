@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import ParentShell from './ParentShell';
 import ChildPills from './ChildPills';
 import HomeworkFeedbackModal from './HomeworkFeedbackModal';
+import downloadHomework from '../../utils/downloadHomework';
 import { useParent } from './ParentContext';
 import { P, cardStyle, btn } from './theme';
 
@@ -26,7 +27,7 @@ export default function Homework() {
     <ParentShell>
       <h1 style={{ fontFamily: P.headlineFont, fontSize: 26, color: P.navy, margin: '0 0 4px' }}>Homework</h1>
       <p style={{ color: P.meta, marginBottom: 20 }}>
-        Newest first{selectedChild ? ` · ${selectedChild.name}` : ''}. Documents open in a new tab and are view-only.
+        Newest first{selectedChild ? ` · ${selectedChild.name}` : ''}. Download the homework and answers as PDFs.
       </p>
       <ChildPills />
 
@@ -42,9 +43,9 @@ export default function Homework() {
               {h.total_questions ? ` · ${h.total_questions} question${h.total_questions === 1 ? '' : 's'}` : ''}
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-              <a href={`/parent/view/${h.id}/homework`} target="_blank" rel="noopener noreferrer" style={btn('navy')}>View homework</a>
+              <button type="button" onClick={() => downloadHomework(h.id, 'homework', h.title).catch(() => alert('Could not download this file'))} style={btn('navy')}>Download homework</button>
               {h.has_answer && (
-                <a href={`/parent/view/${h.id}/answer`} target="_blank" rel="noopener noreferrer" style={btn('secondary')}>View answers</a>
+                <button type="button" onClick={() => downloadHomework(h.id, 'answer', h.title).catch(() => alert('Could not download this file'))} style={btn('secondary')}>Download answers</button>
               )}
               {h.total_questions > 0 && (
                 <button type="button" onClick={() => setFeedbackFor(h)} style={btn('gold')}>Give feedback</button>

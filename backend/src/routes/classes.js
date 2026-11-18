@@ -62,6 +62,9 @@ router.post('/', requireAuth, requireRole('admin'), (req, res, next) => {
     const answerFile = req.files?.answer?.[0];
     if (!hwFile) return res.status(400).json({ error: 'The homework PDF is required when adding a class' });
     const { total: totalQuestions, questions: questionsJson } = resolveQuestions(req.body);
+    if (!totalQuestions) {
+      return res.status(400).json({ error: 'Enter the total number of questions in the homework (a whole number, 1 or more)' });
+    }
     await ensureHomeworkSchema();
 
     await conn.beginTransaction();

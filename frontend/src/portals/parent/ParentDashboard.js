@@ -7,6 +7,7 @@ import ChildPills from './ChildPills';
 import ScoreRing from './ScoreRing';
 import AddChildModal from './AddChildModal';
 import Scroller, { ScrollCard, StudentTag } from './Scroller';
+import downloadHomework from '../../utils/downloadHomework';
 import { useParent } from './ParentContext';
 import { P, cardStyle, btn } from './theme';
 import { parsePercent } from './scoreUtils';
@@ -15,7 +16,7 @@ const QUICK_ACTIONS = [
   { to: '/parent/register', icon: '\u{1F4DD}', title: 'Register for Classes', desc: 'Find and book new sessions' },
   { to: '/parent/upcoming', icon: '\u{1F4C5}', title: 'Upcoming Classes', desc: 'View upcoming lessons' },
   { to: '/parent/one-on-one', icon: '\u{1F464}', title: '1:1 Classes', desc: 'Private tuition sessions' },
-  { to: '/parent/homework', icon: '\u{1F4DA}', title: 'Homework', desc: 'View homework and answers' },
+  { to: '/parent/homework', icon: '\u{1F4DA}', title: 'Homework', desc: 'Download homework and answers' },
   { to: '/parent/mock-exams', icon: '\u{1F4C4}', title: 'Mock Exams', desc: 'Scores, feedback and papers' }
 ];
 
@@ -188,9 +189,9 @@ export default function ParentDashboard() {
                     <div style={{ fontSize: 12.5, color: P.meta, marginBottom: 8 }}>{h.class_title}</div>
                     <StudentTag name={h.child_name} />
                     <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                      <a href={`/parent/view/${h.id}/homework`} target="_blank" rel="noopener noreferrer" style={{ ...btn('navy'), padding: '6px 12px', fontSize: 12 }}>View</a>
+                      <button type="button" onClick={() => downloadHomework(h.id, 'homework', h.title).catch(() => alert('Could not download this file'))} style={{ ...btn('navy'), padding: '6px 12px', fontSize: 12 }}>Download</button>
                       {h.has_answer && (
-                        <a href={`/parent/view/${h.id}/answer`} target="_blank" rel="noopener noreferrer" style={{ ...btn('secondary'), padding: '6px 12px', fontSize: 12 }}>Answers</a>
+                        <button type="button" onClick={() => downloadHomework(h.id, 'answer', h.title).catch(() => alert('Could not download this file'))} style={{ ...btn('secondary'), padding: '6px 12px', fontSize: 12 }}>Answers</button>
                       )}
                     </div>
                   </ScrollCard>

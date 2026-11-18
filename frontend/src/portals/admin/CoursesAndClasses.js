@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { FILE_BASE_URL } from '../../api/axios';
 import AdminShell from './AdminShell';
-import readPdfQuestions from '../../utils/countPdfQuestions';
 import { A, cardStyle, btn, labelStyle, inputStyle, badge, thStyle, tdStyle } from './theme';
 
 const CATEGORIES = ['7+', '8+', '9+', '10+', '11+', '13+'];
@@ -18,8 +17,6 @@ export default function CoursesAndClasses() {
   const [homeworkFile, setHomeworkFile] = useState(null); // required
   const [answerFile, setAnswerFile] = useState(null); // optional
   const [fileKey, setFileKey] = useState(0); // remounts the file inputs after a save
-  const [countNote, setCountNote] = useState('');
-  const [pdfQuestions, setPdfQuestions] = useState([]); // question texts read from the homework PDF
   const [error, setError] = useState('');
   const [expandedCourseId, setExpandedCourseId] = useState(null);
 
@@ -58,26 +55,6 @@ export default function CoursesAndClasses() {
     });
   }
 
-  // Read the question count from the chosen PDF and fill it in (still editable)
-  async function pickHomework(file) {
-    setHomeworkFile(file);
-    setCountNote('');
-    setPdfQuestions([]);
-    if (!file) return;
-    try {
-      const { count: n, questions } = await readPdfQuestions(file);
-      setPdfQuestions(questions);
-      if (n > 0) {
-        setClassForm((f) => ({ ...f, total_questions: String(n) }));
-        setCountNote(`Read from the PDF: ${n} question${n === 1 ? '' : 's'}. Change it if this is not right.`);
-      } else {
-        setCountNote('Could not find numbered questions in this PDF - please type the number.');
-      }
-    } catch (e) {
-      setCountNote('Could not read this PDF - please type the number of questions.');
-    }
-  }
-
   async function addClass(e) {
     e.preventDefault();
     setError('');
@@ -95,8 +72,6 @@ export default function CoursesAndClasses() {
       materialFiles.filter(Boolean).forEach((file) => fd.append('materials', file));
       fd.append('homework', homeworkFile);
       fd.append('total_questions', classForm.total_questions);
-      // the question texts are only sent when they match the number (a blank number means "use the PDF's")
-      if (pdfQuestions.length && (!classForm.total_questions || pdfQuestions.length === Number(classForm.total_questions))) fd.append('questions', JSON.stringify(pdfQuestions.map(({ section, text }) => ({ section, text }))));
       if (answerFile) fd.append('answer', answerFile);
 
       await api.post('/classes', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -104,8 +79,6 @@ export default function CoursesAndClasses() {
       setMaterialFiles([null, null, null, null]);
       setHomeworkFile(null);
       setAnswerFile(null);
-      setCountNote('');
-      setPdfQuestions([]);
       setFileKey((k) => k + 1);
       loadAll();
     } catch (err) {
@@ -217,10 +190,9 @@ export default function CoursesAndClasses() {
         </div>
 
         <label style={labelStyle}>Homework PDF (required)</label>
-        <input key={'hw' + fileKey} required type="file" accept="application/pdf" style={{ marginTop: 6, display: 'block' }} onChange={(e) => pickHomework(e.target.files[0] || null)} />
-        <label style={labelStyle}>Total questions (optional - filled in from the PDF)</label>
-        <input type="number" min="1" step="1" value={classForm.total_questions} onChange={(e) => setClassForm((f) => ({ ...f, total_questions: e.target.value }))} placeholder="e.g. 10" style={inputStyle} />
-        {countNote && <p style={{ fontSize: 12, color: A.meta, margin: '4px 0 0' }}>{countNote}</p>}
+        <input key={'hw' + fileKey} required type="file" accept="application/pdf" style={{ marginTop: 6, display: 'block' }} onChange={(e) => setHomeworkFile(e.target.files[0] || null)} />
+        <label style={labelStyle}>Total number of questions (required)</label>
+        <input required type="number" min="1" step="1" value={classForm.total_questions} onChange={(e) => setClassForm((f) => ({ ...f, total_questions: e.target.value }))} placeholder="e.g. 10" style={inputStyle} />
         <label style={labelStyle}>Answers PDF (optional)</label>
         <input key={'ans' + fileKey} type="file" accept="application/pdf" style={{ marginTop: 6, display: 'block' }} onChange={(e) => setAnswerFile(e.target.files[0] || null)} />
         <p style={{ fontSize: 12, color: A.meta, marginTop: 4 }}>Parents see the homework (view only) for every class their child is booked into.</p>
