@@ -153,7 +153,7 @@ router.get('/available', requireAuth, requireRole('parent'), async (req, res) =>
   const category = childRows[0].category;
 
   const [rows] = await pool.query(
-    `SELECT c.*, co.name AS course_name, u.name AS teacher_name
+    `SELECT c.*, co.name AS course_name, co.description AS course_description, u.name AS teacher_name
      FROM classes c
      JOIN class_categories cc ON cc.class_id = c.id
      JOIN courses co ON co.id = c.course_id
