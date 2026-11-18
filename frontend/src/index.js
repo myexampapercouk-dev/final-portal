@@ -11,3 +11,5 @@ root.render(
 );
 
 // Frontend build marker: 2026-11-12 (total-questions form)
+
+// Deploy check 2026-11-18: text-only change

@@ -77,3 +77,4 @@ app.listen(PORT, () => {
   startCategoryUpgradeJob();
   startFeedbackReminderJob();
 });
+// Deploy check 2026-11-18: text-only change
