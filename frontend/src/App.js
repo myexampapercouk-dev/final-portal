@@ -36,6 +36,7 @@ import Students from './portals/admin/Students';
 import AdminHomework from './portals/admin/AdminHomework';
 import FeedbackApproval from './portals/admin/FeedbackApproval';
 import LiveClasses from './portals/admin/LiveClasses';
+import ClassRecords from './portals/admin/ClassRecords';
 
 // Right-click is disabled across the whole site except the admin portal.
 function RightClickGuard() {
@@ -99,6 +100,7 @@ export default function App() {
           <Route path="/admin/parents" element={<PrivateRoute role="admin"><Parents /></PrivateRoute>} />
           <Route path="/admin/invoices" element={<PrivateRoute role="admin"><AdminInvoices /></PrivateRoute>} />
           <Route path="/admin/students" element={<PrivateRoute role="admin"><Students /></PrivateRoute>} />
+          <Route path="/admin/records" element={<PrivateRoute role="admin"><ClassRecords /></PrivateRoute>} />
           <Route path="/admin/live" element={<PrivateRoute role="admin"><LiveClasses /></PrivateRoute>} />
           <Route path="/admin/homework" element={<PrivateRoute role="admin"><AdminHomework /></PrivateRoute>} />
           <Route path="/admin/approvals/:id" element={<PrivateRoute role="admin"><FeedbackApproval /></PrivateRoute>} />
