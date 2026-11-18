@@ -60,7 +60,7 @@ router.post('/', requireAuth, requireRole('admin'), (req, res) => {
 router.get('/all', requireAuth, requireRole('admin'), async (req, res) => {
   await ensureHomeworkSchema();
   const [rows] = await pool.query(
-    `SELECT h.id, h.title, h.file_name, h.answer_file_name, h.created_at, h.total_questions, c.title AS class_title, c.timing
+    `SELECT h.id, h.class_id, h.title, h.file_name, h.answer_file_name, h.created_at, h.total_questions, c.title AS class_title, c.timing
      FROM homework h JOIN classes c ON c.id = h.class_id
      ORDER BY h.created_at DESC, h.id DESC`
   );
@@ -99,6 +99,47 @@ router.get('/', requireAuth, requireRole('parent'), async (req, res) => {
     try { questions = r.questions ? JSON.parse(r.questions) : null; } catch (e) { /* none */ }
     return { ...r, questions, has_answer: !!r.has_answer };
   }));
+});
+
+// ADMIN: change a homework's title or question count
+router.put('/:id', requireAuth, requireRole('admin'), async (req, res) => {
+  await ensureHomeworkSchema();
+  const [rows] = await pool.query('SELECT * FROM homework WHERE id = ?', [req.params.id]);
+  if (!rows.length) return res.status(404).json({ error: 'Homework not found' });
+  const title = req.body.title === undefined ? rows[0].title : String(req.body.title).trim();
+  const total = req.body.total_questions === undefined ? rows[0].total_questions : Number(req.body.total_questions);
+  if (!title) return res.status(400).json({ error: 'Title is required' });
+  if (!Number.isInteger(total) || total < 1) return res.status(400).json({ error: 'Enter the total number of questions (a whole number, 1 or more)' });
+  await pool.query('UPDATE homework SET title = ?, total_questions = ? WHERE id = ?', [title, total, req.params.id]);
+  res.json({ success: true });
+});
+
+// ADMIN: the feedback parents left on this homework's questions, as a CSV file
+const csvCell = (v) => {
+  const t = String(v === null || v === undefined ? '' : v).replace(/\r?\n/g, ' ');
+  return /[",]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+};
+router.get('/:id/feedback.csv', requireAuth, requireRole('admin'), async (req, res) => {
+  await ensureHomeworkSchema();
+  const [hw] = await pool.query(
+    'SELECT h.title, c.title AS class_title FROM homework h JOIN classes c ON c.id = h.class_id WHERE h.id = ?',
+    [req.params.id]
+  );
+  if (!hw.length) return res.status(404).json({ error: 'Homework not found' });
+  const [rows] = await pool.query(
+    `SELECT ch.name AS student, ch.category, u.name AS parent, f.question_no, f.feedback, f.created_at
+     FROM homework_feedback f
+     JOIN children ch ON ch.id = f.child_id
+     JOIN users u ON u.id = f.parent_id
+     WHERE f.homework_id = ?
+     ORDER BY ch.name, f.question_no`,
+    [req.params.id]
+  );
+  const header = ['Homework', 'Class', 'Student', 'Age group', 'Parent', 'Question', 'Feedback', 'Date'];
+  const lines = rows.map((r) => [hw[0].title, hw[0].class_title, r.student, r.category, r.parent, 'Question ' + r.question_no, r.feedback, new Date(r.created_at).toISOString().slice(0, 16).replace('T', ' ')].map(csvCell).join(','));
+  const name = String(hw[0].title).replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'homework';
+  res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}-feedback.csv"` });
+  res.send('\uFEFF' + [header.map(csvCell).join(','), ...lines].join('\r\n') + '\r\n');
 });
 
 // ADMIN: feedback parents have left on homework questions, newest first
