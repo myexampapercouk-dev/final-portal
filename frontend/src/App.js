@@ -43,7 +43,8 @@ import AdminOneOnOne from './portals/admin/AdminOneOnOne';
 function RightClickGuard() {
   const { pathname } = useLocation();
   useEffect(() => {
-    if (pathname.startsWith('/admin')) return undefined;
+    const RIGHT_CLICK_BLOCK_ON = false; // TEMPORARILY OFF: set to true to block right-click again
+    if (!RIGHT_CLICK_BLOCK_ON || pathname.startsWith('/admin')) return undefined;
     const block = (e) => e.preventDefault();
     document.addEventListener('contextmenu', block);
     return () => document.removeEventListener('contextmenu', block);
