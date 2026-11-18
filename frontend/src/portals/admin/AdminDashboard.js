@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import AdminShell from './AdminShell';
 import { A } from './theme';
+import { LiveClassesPanel } from './LiveClasses';
 
 const TILES = [
   { to: '/admin/tutors', icon: '\u{1F393}', title: 'Tutors', desc: 'Manage teacher accounts' },
@@ -30,6 +31,12 @@ export default function AdminDashboard() {
           </Link>
         ))}
       </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '28px 0 10px' }}>
+        <h2 style={{ fontFamily: A.headlineFont, fontSize: 20, color: A.navy, margin: 0 }}>Live courses &amp; classes</h2>
+        <Link to="/admin/live" style={{ fontSize: 13, color: A.navy, fontWeight: 600 }}>View all →</Link>
+      </div>
+      <LiveClassesPanel compact />
     </AdminShell>
   );
 }

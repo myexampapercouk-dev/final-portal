@@ -11,7 +11,8 @@ const NAV = [
   { to: '/admin/parents', label: 'Parents', icon: '\u{1F46A}' },
   { to: '/admin/students', label: 'Students', icon: '\u{1F9D2}' },
   { to: '/admin/homework', label: 'Homework', icon: '\u{1F4DD}' },
-  { to: '/admin/invoices', label: 'Invoices & Billing', icon: '\u{1F4CB}' }
+  { to: '/admin/invoices', label: 'Invoices & Billing', icon: '\u{1F4CB}' },
+  { to: '/admin/live', label: 'Live Classes', icon: '\u{1F7E2}' }
 ];
 
 function useIsDesktop() {
