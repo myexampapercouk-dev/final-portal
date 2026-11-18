@@ -6,7 +6,6 @@ import { P, btn } from './theme';
 // with its real text from the homework PDF), then writes feedback for every question ticked.
 export default function HomeworkFeedbackModal({ homework, child, onClose }) {
   const total = homework.total_questions || 0;
-  const texts = Array.isArray(homework.questions) && homework.questions.length === total ? homework.questions : null;
   const [picked, setPicked] = useState([]); // question numbers, ascending
   const [text, setText] = useState({}); // question number -> feedback
   const [menuOpen, setMenuOpen] = useState(false);
@@ -16,7 +15,7 @@ export default function HomeworkFeedbackModal({ homework, child, onClose }) {
 
   const selectAll = () => setPicked((p) => (p.length === total ? [] : Array.from({ length: total }, (_, i) => i + 1)));
   const toggle = (q) => setPicked((p) => (p.includes(q) ? p.filter((x) => x !== q) : [...p, q].sort((a, b) => a - b)));
-  const info = (q) => (texts ? texts[q - 1] : null);
+  const info = () => null; // questions are plain "Question N"; nothing is read from the PDF
 
   async function submit(e) {
     e.preventDefault();
@@ -77,7 +76,7 @@ export default function HomeworkFeedbackModal({ homework, child, onClose }) {
                     <label key={q} style={{ ...styles.option, background: picked.includes(q) ? '#FAF6EE' : '#fff' }}>
                       <input type="checkbox" checked={picked.includes(q)} onChange={() => toggle(q)} style={{ width: 'auto', margin: '3px 0 0', flexShrink: 0 }} />
                       <span style={{ minWidth: 0 }}>
-                        <strong>Q{q}</strong>
+                        <strong>Question {q}</strong>
                         {d && d.section && <span style={{ color: P.meta, fontSize: 12.5 }}> · {d.section}</span>}
                         {d && d.text && <span style={{ display: 'block', fontSize: 13.5, color: P.navy, marginTop: 2 }}>{d.text}</span>}
                       </span>
@@ -91,7 +90,7 @@ export default function HomeworkFeedbackModal({ homework, child, onClose }) {
               const d = info(q);
               return (
                 <div key={q} style={{ marginTop: 18 }}>
-                  <label style={styles.label}>Feedback for Q{q}{d && d.section ? ` · ${d.section}` : ''}</label>
+                  <label style={styles.label}>Feedback for question {q}{d && d.section ? ` · ${d.section}` : ''}</label>
                   {d && d.text && <div style={{ fontSize: 13.5, color: P.navy, background: '#FAF6EE', padding: '8px 12px', borderRadius: 8, marginBottom: 8 }}>{d.text}</div>}
                   <textarea
                     rows={4}

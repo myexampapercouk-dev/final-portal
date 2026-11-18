@@ -67,7 +67,7 @@ export default function RegisterForClasses() {
       <p style={{ color: P.meta, marginBottom: 20 }}>
         {course
           ? `${course.classes.length} session${course.classes.length === 1 ? '' : 's'} open for booking in ${course.name}`
-          : `${courses.length} course${courses.length === 1 ? '' : 'es'} with classes open for booking`}
+          : `${courses.length} course${courses.length === 1 ? '' : 's'} with classes open for booking`}
       </p>
       <ChildPills />
 
