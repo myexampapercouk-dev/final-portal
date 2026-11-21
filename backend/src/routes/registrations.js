@@ -1,3 +1,4 @@
+// Backend redeploy trigger
 const express = require('express');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/auth');
