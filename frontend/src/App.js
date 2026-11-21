@@ -10,6 +10,7 @@ import ResetPassword from './ResetPassword';
 // Parent portal
 import { ParentProvider } from './portals/parent/ParentContext';
 import ParentRegister from './portals/parent/ParentRegister';
+import TermsAndConditions from './TermsAndConditions';
 import ParentDashboard from './portals/parent/ParentDashboard';
 import UpcomingClasses from './portals/parent/UpcomingClasses';
 import RegisterForClasses from './portals/parent/RegisterForClasses';
@@ -71,6 +72,7 @@ export default function App() {
           {/* Single, portal-neutral entry points */}
           <Route path="/login" element={<UnifiedLogin />} />
           <Route path="/register" element={<ParentRegister />} />
+          <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 

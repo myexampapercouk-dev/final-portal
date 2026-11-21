@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { P } from './theme';
 import { useParentNotifications } from './NotificationsContext';
+import NotificationToast from '../../components/NotificationToast';
 
 // Parent's bell. Clicking a notification opens the page it is about; the tick
 // marks it done and removes it from the list.
@@ -50,12 +51,7 @@ export default function ParentNotifications() {
         </div>
       )}
 
-      {toast && (
-        <div style={styles.toast} onClick={() => { if (toast.link) navigate(toast.link); setToast(null); }}>
-          <div style={{ fontWeight: 700, fontSize: 13 }}>{toast.title}</div>
-          {toast.body && <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>{toast.body}</div>}
-        </div>
-      )}
+      <NotificationToast key={toast ? toast.title + (toast.body || '') : 'none'} toast={toast} onOpen={() => { if (toast.link) navigate(toast.link); setToast(null); }} onClose={() => setToast(null)} />
     </div>
   );
 }

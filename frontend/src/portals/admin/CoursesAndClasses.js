@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { FILE_BASE_URL } from '../../api/axios';
 import AdminShell from './AdminShell';
-import AdminModal, { toLocalInput } from './AdminModal';
+import AdminModal from './AdminModal';
+import { toUkInput, ukInputToServer } from '../../utils/ukTime';
 import { A, cardStyle, btn, labelStyle, inputStyle, badge, thStyle, tdStyle } from './theme';
 
 const CATEGORIES = ['7+', '8+', '9+', '10+', '11+', '13+'];
@@ -81,7 +82,7 @@ export default function CoursesAndClasses() {
     setBusy(true);
     try {
       const fd = new FormData();
-      ['course_id', 'title', 'teacher_id', 'timing', 'end_timing', 'venue', 'price', 'total_questions'].forEach((k) => fd.append(k, classForm[k]));
+      ['course_id', 'title', 'teacher_id', 'timing', 'end_timing', 'venue', 'price', 'total_questions'].forEach((k) => fd.append(k, k === 'timing' || k === 'end_timing' ? ukInputToServer(classForm[k]) : classForm[k]));
       classForm.categories.forEach((cat) => fd.append('categories', cat));
       materialFiles.filter(Boolean).forEach((file) => fd.append('materials', file));
       fd.append('homework', homeworkFile);
@@ -99,8 +100,8 @@ export default function CoursesAndClasses() {
   function openEdit(cl) {
     setError('');
     setEditing({
-      id: cl.id, title: cl.title, teacher_id: String(cl.teacher_id), timing: toLocalInput(cl.timing),
-      end_timing: toLocalInput(cl.end_timing), venue: cl.venue || '', price: cl.price === null || cl.price === undefined ? '' : String(cl.price)
+      id: cl.id, title: cl.title, teacher_id: String(cl.teacher_id), timing: toUkInput(cl.timing),
+      end_timing: toUkInput(cl.end_timing), venue: cl.venue || '', price: cl.price === null || cl.price === undefined ? '' : String(cl.price)
     });
   }
 
@@ -110,7 +111,7 @@ export default function CoursesAndClasses() {
     setError('');
     try {
       const { id, ...body } = editing;
-      await api.put(`/classes/${id}`, body);
+      await api.put(`/classes/${id}`, { ...body, timing: ukInputToServer(body.timing), end_timing: ukInputToServer(body.end_timing) });
       closeModals();
       loadAll();
     } catch (err) {
@@ -223,9 +224,9 @@ export default function CoursesAndClasses() {
               <option value="">Select a teacher</option>
               {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
-            <label style={labelStyle}>Start time</label>
+            <label style={labelStyle}>Start time (UK)</label>
             <input required type="datetime-local" value={classForm.timing} onChange={(e) => setClassForm((f) => ({ ...f, timing: e.target.value }))} style={inputStyle} />
-            <label style={labelStyle}>End time</label>
+            <label style={labelStyle}>End time (UK)</label>
             <input required type="datetime-local" value={classForm.end_timing} onChange={(e) => setClassForm((f) => ({ ...f, end_timing: e.target.value }))} style={inputStyle} />
             <label style={labelStyle}>Venue</label>
             <input required value={classForm.venue} onChange={(e) => setClassForm((f) => ({ ...f, venue: e.target.value }))} placeholder="e.g. Room 2, Main Campus" style={inputStyle} />
@@ -274,9 +275,9 @@ export default function CoursesAndClasses() {
               <select required value={editing.teacher_id} onChange={(e) => setEditing((f) => ({ ...f, teacher_id: e.target.value }))} style={inputStyle}>
                 {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
-              <label style={labelStyle}>Start time</label>
+              <label style={labelStyle}>Start time (UK)</label>
               <input required type="datetime-local" value={editing.timing} onChange={(e) => setEditing((f) => ({ ...f, timing: e.target.value }))} style={inputStyle} />
-              <label style={labelStyle}>End time</label>
+              <label style={labelStyle}>End time (UK)</label>
               <input type="datetime-local" value={editing.end_timing} onChange={(e) => setEditing((f) => ({ ...f, end_timing: e.target.value }))} style={inputStyle} />
               <label style={labelStyle}>Venue</label>
               <input value={editing.venue} onChange={(e) => setEditing((f) => ({ ...f, venue: e.target.value }))} style={inputStyle} />

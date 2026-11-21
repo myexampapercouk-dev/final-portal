@@ -144,11 +144,12 @@ export default function ParentRegister() {
                 </Section>
 
                 {/* Part 2: Agreements */}
-                <Section n={2} title="Operational Agreements" desc="Reflects the policies this portal actually enforces">
+                <Section n={2} title="Terms and Conditions" desc="Please read them before you register">
                   <label style={styles.agreement}>
                     <input required type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ marginTop: 2, width: 18, height: 18, accentColor: C.navy }} />
-                    <span style={{ fontSize: 12.5, color: C.meta }}>
-                      I understand that classes and 1:1 sessions can only be cancelled or rescheduled at least 24 hours in advance, and that all fees are settled offline (cash or bank transfer) — the portal processes no online payments.
+                    <span style={{ fontSize: 13.5, color: C.ink }}>
+                      I understand the{' '}
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: C.navy, fontWeight: 700, textDecoration: 'underline' }}>Terms and Conditions</a>
                     </span>
                   </label>
                 </Section>

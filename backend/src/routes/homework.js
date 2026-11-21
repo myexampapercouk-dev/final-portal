@@ -119,6 +119,14 @@ const csvCell = (v) => {
   const t = String(v === null || v === undefined ? '' : v).replace(/\r?\n/g, ' ');
   return /[",]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
 };
+// UK time as text like "18 Nov 2026 05:52 UK". The "UK" on the end keeps Excel from turning it into a
+// date, which showed as ##### in a narrow column.
+const ukStamp = (d) => {
+  const p = {};
+  new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hourCycle: 'h23', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    .formatToParts(new Date(d)).forEach((x) => { p[x.type] = x.value; });
+  return `${p.day} ${p.month} ${p.year} ${p.hour}:${p.minute} UK`;
+};
 router.get('/:id/feedback.csv', requireAuth, requireRole('admin'), async (req, res) => {
   await ensureHomeworkSchema();
   const [hw] = await pool.query(
@@ -136,7 +144,7 @@ router.get('/:id/feedback.csv', requireAuth, requireRole('admin'), async (req, r
     [req.params.id]
   );
   const header = ['Homework', 'Class', 'Student', 'Age group', 'Parent', 'Question', 'Feedback', 'Date'];
-  const lines = rows.map((r) => [hw[0].title, hw[0].class_title, r.student, r.category, r.parent, 'Question ' + r.question_no, r.feedback, new Date(r.created_at).toISOString().slice(0, 16).replace('T', ' ')].map(csvCell).join(','));
+  const lines = rows.map((r) => [hw[0].title, hw[0].class_title, r.student, r.category, r.parent, 'Question ' + r.question_no, r.feedback, ukStamp(r.created_at)].map(csvCell).join(','));
   const name = String(hw[0].title).replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'homework';
   res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${name}-feedback.csv"` });
   res.send('\uFEFF' + [header.map(csvCell).join(','), ...lines].join('\r\n') + '\r\n');

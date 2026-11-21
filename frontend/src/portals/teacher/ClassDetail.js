@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import api, { FILE_BASE_URL } from '../../api/axios';
 import TeacherShell from './TeacherShell';
 import { T, btn } from './theme';
+import DictateButton from '../../components/DictateButton';
 
 const SUBJECTS = ['Maths', 'English', 'Reasoning', 'Behaviour'];
 const TABS = ['Register', 'Feedback', 'Materials'];
@@ -228,7 +229,7 @@ export default function ClassDetail() {
 
       {tab === 'Register' && (
         <div style={{ paddingBottom: 30 }}>
-          <h2 style={{ fontFamily: T.headlineFont, fontSize: 22, color: T.navy }}>{new Date(cls.timing).toDateString()} — {cls.course_name}</h2>
+          <h2 style={{ fontFamily: T.headlineFont, fontSize: 22, color: T.navy }}>{new Date(cls.timing).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} — {cls.course_name}</h2>
           <p style={{ color: T.meta, marginTop: -4 }}>Tap every child who is in the room</p>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '16px 0 14px' }}>
             <input
@@ -300,7 +301,7 @@ export default function ClassDetail() {
 
       {tab === 'Feedback' && !reviewing && (
         <div style={{ paddingBottom: 30 }}>
-          <h2 style={{ fontFamily: T.headlineFont, fontSize: 24, color: T.navy }}>Feedback — {new Date(cls.timing).toDateString()}</h2>
+          <h2 style={{ fontFamily: T.headlineFont, fontSize: 24, color: T.navy }}>Feedback — {new Date(cls.timing).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</h2>
           <p style={{ color: T.meta, marginTop: -4 }}>
             {presentStudents.length} students present · {studentsWithRemarks} with remarks
           </p>
@@ -365,7 +366,10 @@ export default function ClassDetail() {
                   onChange={(e) => setBulkRemark(e.target.value)}
                   style={{ ...styles.input, resize: 'vertical' }}
                 />
-                <div style={{ fontSize: 12, marginTop: 4, color: wordCount(bulkRemark) >= MIN_WORDS ? T.green : T.meta }}>{wordCount(bulkRemark)} / {MIN_WORDS} words minimum</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
+                  <div style={{ fontSize: 12, color: wordCount(bulkRemark) >= MIN_WORDS ? T.green : T.meta }}>{wordCount(bulkRemark)} / {MIN_WORDS} words minimum</div>
+                  <DictateButton value={bulkRemark} onChange={setBulkRemark} />
+                </div>
 
                 {bulkMsg && (
                   <div style={{
@@ -417,6 +421,7 @@ export default function ClassDetail() {
                           {editingFb && editingFb.id === f.id ? (
                             <>
                               <textarea rows={3} value={editingFb.content} onChange={(e) => setEditingFb({ ...editingFb, content: e.target.value })} style={styles.input} />
+                              <div style={{ marginTop: 6 }}><DictateButton value={editingFb.content} onChange={(v) => setEditingFb((cur) => (cur ? { ...cur, content: v } : cur))} /></div>
                               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                                 <button style={btn('gold')} onClick={saveEditedFeedback}>Save</button>
                                 <button style={btn('secondary')} onClick={() => setEditingFb(null)}>Cancel</button>
@@ -443,7 +448,16 @@ export default function ClassDetail() {
                     />
                     {(() => {
                       const n = wordCount(feedbackDraft[`${activeReg.registration_id}:${activeSubject}`]);
-                      return <div style={{ fontSize: 12, marginTop: 4, color: n >= MIN_WORDS ? T.green : T.meta }}>{n} / {MIN_WORDS} words minimum</div>;
+                      return (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
+                          <div style={{ fontSize: 12, color: n >= MIN_WORDS ? T.green : T.meta }}>{n} / {MIN_WORDS} words minimum</div>
+                          <DictateButton
+                            key={`${activeReg.registration_id}:${activeSubject}`}
+                            value={feedbackDraft[`${activeReg.registration_id}:${activeSubject}`] || ''}
+                            onChange={(v) => setFeedbackDraft((d) => ({ ...d, [`${activeReg.registration_id}:${activeSubject}`]: v }))}
+                          />
+                        </div>
+                      );
                     })()}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
                       <button style={btn('secondary')} onClick={submitSingleFeedback}>

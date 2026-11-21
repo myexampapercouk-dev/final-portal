@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { A } from './theme';
+import NotificationToast from '../../components/NotificationToast';
 
 // Bell with an open-count badge. Clicking an item goes to where the action is;
 // the tick marks it done and removes it.
@@ -89,12 +90,7 @@ export default function AdminNotifications() {
         </div>
       )}
 
-      {toast && (
-        <div style={styles.toast} onClick={() => { if (toast.link) navigate(toast.link); setToast(null); }}>
-          <div style={{ fontWeight: 700, fontSize: 13 }}>{toast.title}</div>
-          {toast.body && <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>{toast.body}</div>}
-        </div>
-      )}
+      <NotificationToast key={toast ? toast.title + (toast.body || '') : 'none'} toast={toast} onOpen={() => { if (toast.link) navigate(toast.link); setToast(null); }} onClose={() => setToast(null)} />
     </div>
   );
 }

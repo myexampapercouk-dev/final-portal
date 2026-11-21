@@ -125,7 +125,6 @@ export default function RegisterForClasses() {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontWeight: 600, color: P.navy, fontFamily: P.headlineFont, fontSize: 16 }}>{c.title}</div>
-                  <div style={{ fontSize: 12.5, color: P.meta, marginTop: 2 }}>{c.course_name}</div>
                   <ClassDetails c={c} />
                   <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {c.categories.map((cat) => (

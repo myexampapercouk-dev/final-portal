@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import api from '../../api/axios';
 import AdminShell from './AdminShell';
 import AdminModal from './AdminModal';
+import { ukInputToServer } from '../../utils/ukTime';
 import { A, cardStyle, btn, labelStyle, inputStyle, badge } from './theme';
 
 const CATEGORIES = ['7+', '8+', '9+', '10+', '11+', '13+'];
@@ -55,8 +56,8 @@ export default function AdminOneOnOne() {
         child_id: form.child_id,
         teacher_id: form.teacher_id,
         topic: form.topic,
-        timing: `${form.date}T${form.start}`,
-        end_timing: form.end ? `${form.date}T${form.end}` : null,
+        timing: ukInputToServer(`${form.date}T${form.start}`),
+        end_timing: form.end ? ukInputToServer(`${form.date}T${form.end}`) : null,
         notes: form.notes
       });
       setModal(false);
@@ -170,11 +171,11 @@ export default function AdminOneOnOne() {
             <input required type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} style={inputStyle} />
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 140px' }}>
-                <label style={labelStyle}>Start</label>
+                <label style={labelStyle}>Start (UK time)</label>
                 <input required type="time" value={form.start} onChange={(e) => setForm((f) => ({ ...f, start: e.target.value }))} style={inputStyle} />
               </div>
               <div style={{ flex: '1 1 140px' }}>
-                <label style={labelStyle}>End</label>
+                <label style={labelStyle}>End (UK time)</label>
                 <input type="time" value={form.end} onChange={(e) => setForm((f) => ({ ...f, end: e.target.value }))} style={inputStyle} />
               </div>
             </div>

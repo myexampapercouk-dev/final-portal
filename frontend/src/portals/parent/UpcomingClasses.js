@@ -84,7 +84,7 @@ export function DateBadge({ date }) {
       width: 48, height: 48, borderRadius: 10, background: P.cream, border: `1px solid ${P.line}`,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0
     }}>
-      <div style={{ fontWeight: 700, fontSize: 16, color: P.navy, fontFamily: P.headlineFont, lineHeight: 1 }}>{d.getDate()}</div>
+      <div style={{ fontWeight: 700, fontSize: 16, color: P.navy, fontFamily: P.headlineFont, lineHeight: 1 }}>{d.toLocaleDateString(undefined, { day: 'numeric' })}</div>
       <div style={{ fontSize: 9.5, color: P.gold, fontWeight: 700, textTransform: 'uppercase' }}>{d.toLocaleDateString(undefined, { month: 'short' })}</div>
     </div>
   );

@@ -90,9 +90,10 @@ router.get('/child/:childId/upcoming', requireAuth, requireRole('parent'), async
   const child = await assertChildOwnership(req.params.childId, req.user.id);
   if (!child) return res.status(403).json({ error: 'Not your child' });
   const [rows] = await pool.query(
-    `SELECT cr.*, c.title, c.timing, c.end_timing, c.venue, c.price, u.name AS teacher_name
+    `SELECT cr.*, c.title, c.timing, c.end_timing, c.venue, c.price, u.name AS teacher_name, co.name AS course_name
      FROM class_registrations cr
      JOIN classes c ON c.id = cr.class_id
+     JOIN courses co ON co.id = c.course_id
      JOIN users u ON u.id = c.teacher_id
      WHERE cr.child_id = ? AND cr.status = 'upcoming'
      ORDER BY c.timing ASC`,
@@ -105,9 +106,10 @@ router.get('/child/:childId/attended', requireAuth, requireRole('parent'), async
   const child = await assertChildOwnership(req.params.childId, req.user.id);
   if (!child) return res.status(403).json({ error: 'Not your child' });
   const [rows] = await pool.query(
-    `SELECT cr.*, c.title, c.timing, c.end_timing, c.venue, c.price, u.name AS teacher_name
+    `SELECT cr.*, c.title, c.timing, c.end_timing, c.venue, c.price, u.name AS teacher_name, co.name AS course_name
      FROM class_registrations cr
      JOIN classes c ON c.id = cr.class_id
+     JOIN courses co ON co.id = c.course_id
      JOIN users u ON u.id = c.teacher_id
      WHERE cr.child_id = ? AND cr.status = 'attended'
      ORDER BY c.timing DESC`,

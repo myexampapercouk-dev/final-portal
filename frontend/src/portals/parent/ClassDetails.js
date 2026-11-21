@@ -7,9 +7,10 @@ const time = (d) => new Date(d).toLocaleTimeString(undefined, { hour: '2-digit',
 // Venue/price/end time fall back to "To be confirmed" for older classes.
 export default function ClassDetails({ c }) {
   const rows = [
+    ...(c.course_name ? [['Course', c.course_name]] : []),
     ['Date', new Date(c.timing).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })],
-    ['Start time', time(c.timing)],
-    ['End time', c.end_timing ? time(c.end_timing) : 'To be confirmed'],
+    ['Start time', `${time(c.timing)} (UK)`],
+    ['End time', c.end_timing ? `${time(c.end_timing)} (UK)` : 'To be confirmed'],
     ['Venue', c.venue || 'To be confirmed'],
     ['Price', c.price !== null && c.price !== undefined && c.price !== '' ? `£${Number(c.price).toFixed(2)}` : 'To be confirmed']
   ];
